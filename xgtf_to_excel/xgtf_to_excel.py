@@ -40,6 +40,8 @@ for i in os.listdir(namespace.work_dir):
     try:
         numframes = int(root_data_sourcefile_file.find('./{http://lamp.cfar.umd.edu/viper#}attribute[@name="NUMFRAMES"]/').attrib['value']) # NUMFRAMES
         framerate = float(root_data_sourcefile_file.find('.//{http://lamp.cfar.umd.edu/viper#}attribute[@name="FRAMERATE"]/').attrib['value'])  # FRAMERATE
+        if numframes == 0 or framerate == 0:
+            raise AttributeError
     except AttributeError:
         numframes,framerate = get_from_video(namespace.work_dir, root_data_sourcefile.attrib['filename'].split("\\")[-1])
     # Расчет времени
