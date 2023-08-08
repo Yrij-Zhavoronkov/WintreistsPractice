@@ -2,11 +2,12 @@ import os
 import pandas as pd
 import xml.etree.ElementTree as ET
 from argparse import ArgumentParser
+import cv2
 
 
-
-def get_from_video(what:str):
-    return 1
+def get_from_video(work_dir:str, file_name:str):
+    video = cv2.VideoCapture(work_dir+"\\"+file_name)
+    return video.get(cv2.CAP_PROP_FRAME_COUNT), video.get(cv2.CAP_PROP_FPS)
 
 
 # Аргументы
@@ -38,12 +39,9 @@ for i in os.listdir(namespace.work_dir):
     root_data_sourcefile_file = root_data_sourcefile.find('./{http://lamp.cfar.umd.edu/viper#}file')
     try:
         numframes = int(root_data_sourcefile_file.find('./{http://lamp.cfar.umd.edu/viper#}attribute[@name="NUMFRAMES"]/').attrib['value']) # NUMFRAMES
+        framerate = float(root_data_sourcefile_file.find('.//{http://lamp.cfar.umd.edu/viper#}attribute[@name="FRAMERATE"]/').attrib['value'])  # FRAMERATE
     except AttributeError:
-        numframes = get_from_video("numframes")
-    try:
-        framerate = float(root_data_sourcefile_file.find('.//{http://lamp.cfar.umd.edu/viper#}attribute[@name="FRAMERATE"]/').attrib['value']) # FRAMERATE
-    except AttributeError:
-        framerate = get_from_video("framerate")
+        numframes,framerate = get_from_video(namespace.work_dir, root_data_sourcefile.attrib['filename'].split("\\")[-1])
     # Расчет времени
     time = numframes / framerate
     hours = int(time // 3600)
