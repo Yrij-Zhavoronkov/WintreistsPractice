@@ -1,11 +1,15 @@
 import os
 import pandas as pd
 import xml.etree.ElementTree as ET
-from xml.etree.cElementTree import ElementTree
 from argparse import ArgumentParser
 import cv2
 from dataclasses import dataclass 
 
+
+# Константы
+VIPER = "{http://lamp.cfar.umd.edu/viper#}"
+VIPERDATA = "{http://lamp.cfar.umd.edu/viperdata#}"
+#
 
 def get_fps_and_numframes_from_video(work_dir:str, file_name:str):
     video = cv2.VideoCapture(os.path.join(work_dir, file_name))
@@ -19,15 +23,15 @@ def calculate_time(time:int):
     seconds = int(time)
     return f"{hours}:{minutes}:{seconds}"
 
-def get_default_value(what:str, tree:ElementTree):
+def get_default_value_for_class(tree:ET.ElementTree):
     default_value = 'None'
-    for i in tree.getroot().findall('./{http://lamp.cfar.umd.edu/viper#}config/{http://lamp.cfar.umd.edu/viper#}descriptor/{http://lamp.cfar.umd.edu/viper#}attribute'+f'[{what}]'+'/{http://lamp.cfar.umd.edu/viper#}default/{http://lamp.cfar.umd.edu/viperdata#}bvalue'):
+    for i in tree.getroot().findall(f'./{VIPER}config/{VIPER}descriptor/{VIPER}attribute[@name="Class"]/{VIPER}default/{VIPERDATA}svalue'):
         default_value = i.attrib['value']
     return default_value
 
 
 @dataclass
-class DataClass:
+class XgtfData:
     
     fileName:str=None
     objectsCount:int=None
@@ -39,6 +43,7 @@ class DataClass:
     def __iter__(self):
         return iter([self.fileName, self.objectsCount, self.videoDuration, 
                 self.framesCount, self.averageObjectsInFrame, self.classes])
+    
 
 
 # Аргументы
@@ -54,7 +59,7 @@ for i in os.listdir(namespace.work_dir):
         continue
     # Подготовка
     # Имя
-    data = DataClass(i)
+    data = XgtfData(i)
 
     try:
         tree = ET.parse(os.path.join(namespace.work_dir, i))
@@ -62,25 +67,25 @@ for i in os.listdir(namespace.work_dir):
         allData.append(data)
         continue
     print(os.path.join(namespace.work_dir, i))
-    root_data_sourcefile = tree.getroot().find('./{http://lamp.cfar.umd.edu/viper#}data/{http://lamp.cfar.umd.edu/viper#}sourcefile')
+    root_data_sourcefile = tree.getroot().find(f'./{VIPER}data/{VIPER}sourcefile')
     
     # Количество объектов
     classes = []
     count_of_objects = 0
-    for objects in root_data_sourcefile.findall('./{http://lamp.cfar.umd.edu/viper#}object/{http://lamp.cfar.umd.edu/viper#}attribute[@name="Class"]'):
+    for objects in root_data_sourcefile.findall(f'./{VIPER}object/{VIPER}attribute[@name="Class"]'):
         count_of_objects += 1
         try:
-            classes.append(objects.find('./{http://lamp.cfar.umd.edu/viperdata#}svalue').attrib['value'])
+            classes.append(objects.find(f'./{VIPERDATA}svalue').attrib['value'])
         except AttributeError:
-            classes.append(get_default_value('@name="Class"', tree))
+            classes.append(get_default_value_for_class(tree))
     data.objectsCount = count_of_objects
     # Классы
     data.classes = ','.join(set(classes))
     # Длинна видео (секунд)
-    root_data_sourcefile_file = root_data_sourcefile.find('./{http://lamp.cfar.umd.edu/viper#}file')
+    root_data_sourcefile_file = root_data_sourcefile.find(f'./{VIPER}file')
     try:
-        numframes = int(root_data_sourcefile_file.find('./{http://lamp.cfar.umd.edu/viper#}attribute[@name="NUMFRAMES"]/').attrib['value']) # NUMFRAMES
-        framerate = float(root_data_sourcefile_file.find('.//{http://lamp.cfar.umd.edu/viper#}attribute[@name="FRAMERATE"]/').attrib['value'])  # FRAMERATE
+        numframes = int(root_data_sourcefile_file.find(f'./{VIPER}attribute[@name="NUMFRAMES"]/').attrib['value']) # NUMFRAMES
+        framerate = float(root_data_sourcefile_file.find(f'.//{VIPER}attribute[@name="FRAMERATE"]/').attrib['value'])  # FRAMERATE
         if numframes == 0 or framerate == 0:
             raise AttributeError
     except AttributeError:
