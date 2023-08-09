@@ -4,7 +4,7 @@ import xml.etree.ElementTree as ET
 from argparse import ArgumentParser
 import cv2
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, Tuple
 
 
 # Константы
@@ -12,7 +12,7 @@ VIPER = "{http://lamp.cfar.umd.edu/viper#}"
 VIPERDATA = "{http://lamp.cfar.umd.edu/viperdata#}"
 #
 
-def get_fps_and_numframes_from_video(work_dir:str, file_name:str) -> tuple[float, float]:
+def get_fps_and_numframes_from_video(work_dir:str, file_name:str) -> Tuple[float, float]:
     video = cv2.VideoCapture(os.path.join(work_dir, file_name))
     return video.get(cv2.CAP_PROP_FRAME_COUNT), video.get(cv2.CAP_PROP_FPS)
 
@@ -29,6 +29,18 @@ def get_default_value_for_class(tree:ET.ElementTree) -> str:
     for i in tree.getroot().findall(f'./{VIPER}config/{VIPER}descriptor/{VIPER}attribute[@name="Class"]/{VIPER}default/{VIPERDATA}svalue'):
         default_value = i.attrib['value']
     return default_value
+
+def painting_errors(element):
+    if isinstance(element, int):
+        if element == 0:
+            return 'background-color: #ff4c5b;'
+    elif isinstance(element, str):
+        if "None" in element or element == "":
+            return 'background-color: #ff4c5b;'
+    elif isinstance(element, float):
+        if element == 0.0:
+            return 'background-color: #ff4c5b;'
+    return None
 
 
 @dataclass
@@ -100,4 +112,4 @@ for i in os.listdir(namespace.work_dir):
     # Сохраняем в общий массив
     allData.append(list(data))
 df = pd.DataFrame(allData, columns=['Имя', 'Количество объектов', 'Длинна видео (секунд)', 'Длинна видео (кадры)', 'Среднее кол-во объектов на кадре', 'Классы'])
-df.to_excel(namespace.result_dir)
+df.style.applymap(painting_errors).to_excel(namespace.result_dir)
