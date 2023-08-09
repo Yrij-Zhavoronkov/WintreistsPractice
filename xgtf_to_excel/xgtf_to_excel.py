@@ -3,7 +3,8 @@ import pandas as pd
 import xml.etree.ElementTree as ET
 from argparse import ArgumentParser
 import cv2
-from dataclasses import dataclass 
+from dataclasses import dataclass
+from typing import Optional
 
 
 # Константы
@@ -11,11 +12,11 @@ VIPER = "{http://lamp.cfar.umd.edu/viper#}"
 VIPERDATA = "{http://lamp.cfar.umd.edu/viperdata#}"
 #
 
-def get_fps_and_numframes_from_video(work_dir:str, file_name:str):
+def get_fps_and_numframes_from_video(work_dir:str, file_name:str) -> tuple[float, float]:
     video = cv2.VideoCapture(os.path.join(work_dir, file_name))
     return video.get(cv2.CAP_PROP_FRAME_COUNT), video.get(cv2.CAP_PROP_FPS)
 
-def calculate_time(time:int):
+def calculate_time(time:int) -> str:
     hours = int(time // 3600)
     time -= 3600*hours
     minutes = int(time//60)
@@ -23,7 +24,7 @@ def calculate_time(time:int):
     seconds = int(time)
     return f"{hours}:{minutes}:{seconds}"
 
-def get_default_value_for_class(tree:ET.ElementTree):
+def get_default_value_for_class(tree:ET.ElementTree) -> str:
     default_value = 'None'
     for i in tree.getroot().findall(f'./{VIPER}config/{VIPER}descriptor/{VIPER}attribute[@name="Class"]/{VIPER}default/{VIPERDATA}svalue'):
         default_value = i.attrib['value']
@@ -33,12 +34,12 @@ def get_default_value_for_class(tree:ET.ElementTree):
 @dataclass
 class XgtfData:
     
-    fileName:str=None
-    objectsCount:int=None
-    videoDuration:str=None
-    framesCount:int=None
-    averageObjectsInFrame:float=None
-    classes:str=None
+    fileName:str
+    objectsCount:Optional[int]=None
+    videoDuration:Optional[str]=None
+    framesCount:Optional[float]=None
+    averageObjectsInFrame:Optional[float]=None
+    classes:Optional[str]=None
 
     def __iter__(self):
         return iter([self.fileName, self.objectsCount, self.videoDuration, 
@@ -84,7 +85,7 @@ for i in os.listdir(namespace.work_dir):
     # Длинна видео (секунд)
     root_data_sourcefile_file = root_data_sourcefile.find(f'./{VIPER}file')
     try:
-        numframes = int(root_data_sourcefile_file.find(f'./{VIPER}attribute[@name="NUMFRAMES"]/').attrib['value']) # NUMFRAMES
+        numframes = float(root_data_sourcefile_file.find(f'./{VIPER}attribute[@name="NUMFRAMES"]/').attrib['value']) # NUMFRAMES
         framerate = float(root_data_sourcefile_file.find(f'.//{VIPER}attribute[@name="FRAMERATE"]/').attrib['value'])  # FRAMERATE
         if numframes == 0 or framerate == 0:
             raise AttributeError
