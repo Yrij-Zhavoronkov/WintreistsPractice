@@ -5,6 +5,7 @@ from argparse import ArgumentParser
 import cv2
 from dataclasses import dataclass
 from typing import Optional, Tuple
+from math import isnan
 
 
 # Константы
@@ -13,8 +14,17 @@ VIPERDATA = "{http://lamp.cfar.umd.edu/viperdata#}"
 #
 
 def get_fps_and_numframes_from_video(work_dir:str, file_name:str) -> Tuple[float, float]:
-    video = cv2.VideoCapture(os.path.join(work_dir, file_name))
-    return video.get(cv2.CAP_PROP_FRAME_COUNT), video.get(cv2.CAP_PROP_FPS)
+    extensions = ["mkv", "mp4", "mpeg", "mov", "avi"]
+    video_dir = None
+    for i in [f"{file_name.split('.')[0]}.{i}" for i in extensions]:
+        if os.path.isfile(os.path.join(work_dir, i)):
+            video_dir = os.path.join(work_dir, i)
+            break
+    if video_dir is not None:
+        video = cv2.VideoCapture(video_dir)
+        return video.get(cv2.CAP_PROP_FRAME_COUNT), video.get(cv2.CAP_PROP_FPS)
+    else:
+        return 0.0, 0.0
 
 def calculate_time(time:int) -> str:
     hours = int(time // 3600)
@@ -40,6 +50,10 @@ def painting_errors(element):
     elif isinstance(element, float):
         if element == 0.0:
             return 'background-color: #ff4c5b;'
+        elif isnan(element):
+            return 'background-color: #ff4c5b;'
+    elif element is None:
+        return 'background-color: #ff4c5b;'
     return None
 
 
@@ -102,13 +116,18 @@ for i in os.listdir(namespace.work_dir):
         if numframes == 0 or framerate == 0:
             raise AttributeError
     except AttributeError:
-        numframes,framerate = get_fps_and_numframes_from_video(namespace.work_dir, root_data_sourcefile.attrib['filename'].split("\\")[-1]) # поправить для других ОС
-    # Расчет времени
-    data.videoDuration = calculate_time(numframes / framerate)
-    # Длинна видео (кадры)
-    data.framesCount = numframes
-    # Среднее кол-во объектов на кадре
-    data.averageObjectsInFrame = count_of_objects / numframes
+        numframes,framerate = get_fps_and_numframes_from_video(namespace.work_dir, i)
+
+    try:
+        # Расчет времени
+        data.videoDuration = calculate_time(numframes / framerate)
+        # Среднее кол-во объектов на кадре
+        data.averageObjectsInFrame = count_of_objects / numframes
+        # Длинна видео (кадры)
+        data.framesCount = numframes
+    except ZeroDivisionError:
+        pass
+    
     # Сохраняем в общий массив
     allData.append(list(data))
 df = pd.DataFrame(allData, columns=['Имя', 'Количество объектов', 'Длинна видео (секунд)', 'Длинна видео (кадры)', 'Среднее кол-во объектов на кадре', 'Классы'])
