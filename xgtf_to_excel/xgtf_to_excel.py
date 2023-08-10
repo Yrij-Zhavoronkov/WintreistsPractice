@@ -143,5 +143,14 @@ for file_name in os.listdir(namespace.work_dir):
     # Сохраняем в общий массив
     allData.xgtfData.append(data)
 
+# Вывод в файл
 df = pd.DataFrame(allData, columns=['Имя', 'Количество объектов', 'Длинна видео (секунд)', 'Длинна видео (кадры)', 'Среднее кол-во объектов на кадре', 'Классы'])
-df.style.applymap(painting_errors).to_excel(namespace.result_dir)
+writer = pd.ExcelWriter(namespace.result_dir, engine='xlsxwriter') 
+df.style.applymap(painting_errors).to_excel(writer, sheet_name='Sheet1', index=False, na_rep='NaN')
+
+for column in df:
+    column_length = max(df[column].astype(str).map(len).max(), len(column)) + 1
+    col_idx = df.columns.get_loc(column)
+    writer.sheets['Sheet1'].set_column(col_idx, col_idx, column_length)
+
+writer.save()
