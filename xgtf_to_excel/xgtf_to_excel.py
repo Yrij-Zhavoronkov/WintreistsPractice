@@ -16,9 +16,9 @@ VIPERDATA = "{http://lamp.cfar.umd.edu/viperdata#}"
 def get_fps_and_numframes_from_video(work_dir:str, file_name:str) -> Tuple[float, float]:
     extensions = ["mkv", "mp4", "mpeg", "mov", "avi"]
     video_dir = None
-    for i in [f"{file_name.split('.')[0]}.{i}" for i in extensions]:
-        if os.path.isfile(os.path.join(work_dir, i)):
-            video_dir = os.path.join(work_dir, i)
+    for video_name in [f"{file_name.split('.')[0]}.{extension}" for extension in extensions]:
+        if os.path.isfile(os.path.join(work_dir, video_name)):
+            video_dir = os.path.join(work_dir, video_name)
             break
     if video_dir is not None:
         video = cv2.VideoCapture(video_dir)
@@ -36,8 +36,8 @@ def calculate_time(time:int) -> str:
 
 def get_default_value_for_class(tree:ET.ElementTree) -> str:
     default_value = 'None'
-    for i in tree.getroot().findall(f'./{VIPER}config/{VIPER}descriptor/{VIPER}attribute[@name="Class"]/{VIPER}default/{VIPERDATA}svalue'):
-        default_value = i.attrib['value']
+    for attribute in tree.getroot().findall(f'./{VIPER}config/{VIPER}descriptor/{VIPER}attribute[@name="Class"]/{VIPER}default/{VIPERDATA}svalue'):
+        default_value = attribute.attrib['value']
     return default_value
 
 def painting_errors(element):
@@ -80,20 +80,20 @@ parser.add_argument('--result-dir',nargs="?", default='result.xlsx')
 namespace = parser.parse_args()
 #
 allData = []
-for i in os.listdir(namespace.work_dir):
+for file_name in os.listdir(namespace.work_dir):
     # Условие для обработки .xgtf
-    if i.find(".xgtf") == -1:
+    if file_name.find(".xgtf") == -1:
         continue
     # Подготовка
     # Имя
-    data = XgtfData(i)
+    data = XgtfData(file_name)
 
     try:
-        tree = ET.parse(os.path.join(namespace.work_dir, i))
+        tree = ET.parse(os.path.join(namespace.work_dir, file_name))
     except ET.ParseError:
         allData.append(data)
         continue
-    print(os.path.join(namespace.work_dir, i))
+    print(os.path.join(namespace.work_dir, file_name))
     root_data_sourcefile = tree.getroot().find(f'./{VIPER}data/{VIPER}sourcefile')
     
     # Количество объектов
@@ -116,7 +116,7 @@ for i in os.listdir(namespace.work_dir):
         if numframes == 0 or framerate == 0:
             raise AttributeError
     except AttributeError:
-        numframes,framerate = get_fps_and_numframes_from_video(namespace.work_dir, i)
+        numframes,framerate = get_fps_and_numframes_from_video(namespace.work_dir, file_name)
 
     try:
         # Расчет времени
