@@ -35,7 +35,7 @@ def calculate_time(time:float) -> str:
     return f"{hours}:{minutes}:{seconds}"
 
 def get_default_value_for_class(tree:ET.ElementTree) -> str:
-    default_value = None
+    default_value = "None"
     for attribute in tree.getroot().findall(f'./{VIPER}config/{VIPER}descriptor/{VIPER}attribute[@name="Class"]/{VIPER}default/{VIPERDATA}svalue'):
         default_value = attribute.attrib['value']
     return default_value
@@ -54,11 +54,6 @@ def painting_errors(element):
             return 'background-color: #ff4c5b;'
     elif element is None:
         return 'background-color: #ff4c5b;'
-    elif isinstance(element, set):
-        if None in element:
-            return 'background-color: #ff4c5b;'
-        elif len(element) == 0:
-            return 'background-color: #ff4c5b;'
     return None
 
 
@@ -74,25 +69,8 @@ class XgtfData:
     classes:Optional[set[Optional[str]]]=field(default_factory=set)
 
     def __iter__(self):
-        return iter([self.fileName, self.objectsCount, self.videoDuration, 
-                self.framesCount, self.averageObjectsInFrame, self.classes])
-    def __getitem__(self, item):
-        return list(self)[item]
-    def __len__(self):
-        return 6
-    
-@dataclass
-class AllXgtfData:
-    xgtfData:list[XgtfData] = field(default_factory=list)
-
-    def __iter__(self):
-        from numpy import sum as npsum
-        statistics = XgtfData("Итого")
-        statistics.objectsCount, statistics.videoDuration, statistics.framesCount, statistics.averageObjectsInFrame = npsum([xgtf[1:-1] for xgtf in self.xgtfData], axis=0)
-        statistics.classes = set.union(*[xgtf[-1] for xgtf in self.xgtfData])
-        return iter([list(xgtf) for xgtf in self.xgtfData] + [list(statistics)])
-    def __len__(self):
-        return len(self.xgtfData)+1
+        return iter([self.fileName, self.objectsCount, calculate_time(self.videoDuration), 
+                self.framesCount, self.averageObjectsInFrame, ",".join(self.classes)])
     
 
 
@@ -102,7 +80,8 @@ parser.add_argument('--work-dir')
 parser.add_argument('--result-dir',nargs="?", default='result.xlsx')
 namespace = parser.parse_args()
 #
-allData = AllXgtfData()
+allData = []
+statistics = XgtfData("Итого", 0, 0.0, 0.0, 0.0, set())
 for file_name in os.listdir(namespace.work_dir):
     # Условие для обработки .xgtf
     if file_name.find(".xgtf") == -1:
@@ -149,6 +128,14 @@ for file_name in os.listdir(namespace.work_dir):
         pass
     
     # Сохраняем в общий массив
-    allData.xgtfData.append(data)
-df = pd.DataFrame(list(allData), columns=['Имя', 'Количество объектов', 'Длинна видео (секунд)', 'Длинна видео (кадры)', 'Среднее кол-во объектов на кадре', 'Классы'])
+    allData.append(list(data))
+    # Складываем статистику
+    statistics.objectsCount += data.objectsCount
+    statistics.videoDuration += data.videoDuration
+    statistics.framesCount += data.framesCount
+    statistics.averageObjectsInFrame += data.averageObjectsInFrame
+    statistics.classes = set.union(statistics.classes, data.classes)
+
+allData.append(list(statistics))
+df = pd.DataFrame(allData, columns=['Имя', 'Количество объектов', 'Длинна видео (секунд)', 'Длинна видео (кадры)', 'Среднее кол-во объектов на кадре', 'Классы'])
 df.style.applymap(painting_errors).to_excel(namespace.result_dir)
