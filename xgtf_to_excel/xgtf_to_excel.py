@@ -15,13 +15,13 @@ VIPERDATA = "{http://lamp.cfar.umd.edu/viperdata#}"
 
 def get_fps_and_numframes_from_video(work_dir:str, file_name:str) -> Tuple[float, float]:
     extensions = ["mkv", "mp4", "mpeg", "mov", "avi"]
-    video_dir = None
+    video_path = None
     for video_name in [f"{file_name.split('.')[0]}.{extension}" for extension in extensions]:
         if os.path.isfile(os.path.join(work_dir, video_name)):
-            video_dir = os.path.join(work_dir, video_name)
+            video_path = os.path.join(work_dir, video_name)
             break
-    if video_dir is not None:
-        video = cv2.VideoCapture(video_dir)
+    if video_path is not None:
+        video = cv2.VideoCapture(video_path)
         return video.get(cv2.CAP_PROP_FRAME_COUNT), video.get(cv2.CAP_PROP_FPS)
     else:
         return 0.0, 0.0
