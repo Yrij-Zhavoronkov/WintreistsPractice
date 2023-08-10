@@ -69,8 +69,22 @@ class XgtfData:
     classes:Optional[set[Optional[str]]]=field(default_factory=set)
 
     def __iter__(self):
-        return iter([self.fileName, self.objectsCount, calculate_time(self.videoDuration), 
+        return iter([self.fileName, self.objectsCount, calculate_time(self.videoDuration),
                 self.framesCount, self.averageObjectsInFrame, ",".join(self.classes)])
+    def to_list(self) -> list:
+        return [self.fileName, self.objectsCount, self.videoDuration,
+                self.framesCount, self.averageObjectsInFrame, self.classes]
+
+@dataclass
+class AllXgtfData:
+    xgtfData:list[XgtfData] = field(default_factory=list)
+
+    def __iter__(self):
+        from numpy import sum as npsum
+        statistics = XgtfData("Итого")
+        statistics.objectsCount, statistics.videoDuration, statistics.framesCount, statistics.averageObjectsInFrame = npsum([xgtf.to_list()[1:-1] for xgtf in self.xgtfData], axis=0)
+        statistics.classes = set.union(*[xgtf.to_list()[-1] for xgtf in self.xgtfData])
+        return iter([list(xgtf) for xgtf in self.xgtfData] + [list(statistics)])
     
 
 
@@ -80,8 +94,7 @@ parser.add_argument('--work-dir')
 parser.add_argument('--result-dir',nargs="?", default='result.xlsx')
 namespace = parser.parse_args()
 #
-allData = []
-statistics = XgtfData("Итого", 0, 0.0, 0.0, 0.0, set())
+allData = AllXgtfData()
 for file_name in os.listdir(namespace.work_dir):
     # Условие для обработки .xgtf
     if file_name.find(".xgtf") == -1:
@@ -128,14 +141,7 @@ for file_name in os.listdir(namespace.work_dir):
         pass
     
     # Сохраняем в общий массив
-    allData.append(list(data))
-    # Складываем статистику
-    statistics.objectsCount += data.objectsCount
-    statistics.videoDuration += data.videoDuration
-    statistics.framesCount += data.framesCount
-    statistics.averageObjectsInFrame += data.averageObjectsInFrame
-    statistics.classes = set.union(statistics.classes, data.classes)
+    allData.xgtfData.append(data)
 
-allData.append(list(statistics))
 df = pd.DataFrame(allData, columns=['Имя', 'Количество объектов', 'Длинна видео (секунд)', 'Длинна видео (кадры)', 'Среднее кол-во объектов на кадре', 'Классы'])
 df.style.applymap(painting_errors).to_excel(namespace.result_dir)
