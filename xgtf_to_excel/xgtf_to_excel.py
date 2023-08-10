@@ -3,7 +3,7 @@ import pandas as pd
 import xml.etree.ElementTree as ET
 from argparse import ArgumentParser
 import cv2
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Optional, Tuple
 from math import isnan
 
@@ -26,7 +26,7 @@ def get_fps_and_numframes_from_video(work_dir:str, file_name:str) -> Tuple[float
     else:
         return 0.0, 0.0
 
-def calculate_time(time:int) -> str:
+def calculate_time(time:float) -> str:
     hours = int(time // 3600)
     time -= 3600*hours
     minutes = int(time//60)
@@ -35,7 +35,7 @@ def calculate_time(time:int) -> str:
     return f"{hours}:{minutes}:{seconds}"
 
 def get_default_value_for_class(tree:ET.ElementTree) -> str:
-    default_value = 'None'
+    default_value = None
     for attribute in tree.getroot().findall(f'./{VIPER}config/{VIPER}descriptor/{VIPER}attribute[@name="Class"]/{VIPER}default/{VIPERDATA}svalue'):
         default_value = attribute.attrib['value']
     return default_value
@@ -54,7 +54,13 @@ def painting_errors(element):
             return 'background-color: #ff4c5b;'
     elif element is None:
         return 'background-color: #ff4c5b;'
+    elif isinstance(element, set):
+        if None in element:
+            return 'background-color: #ff4c5b;'
+        elif len(element) == 0:
+            return 'background-color: #ff4c5b;'
     return None
+
 
 
 @dataclass
@@ -62,14 +68,31 @@ class XgtfData:
     
     fileName:str
     objectsCount:Optional[int]=None
-    videoDuration:Optional[str]=None
+    videoDuration:Optional[float]=None
     framesCount:Optional[float]=None
     averageObjectsInFrame:Optional[float]=None
-    classes:Optional[str]=None
+    classes:Optional[set[Optional[str]]]=field(default_factory=set)
 
     def __iter__(self):
         return iter([self.fileName, self.objectsCount, self.videoDuration, 
                 self.framesCount, self.averageObjectsInFrame, self.classes])
+    def __getitem__(self, item):
+        return list(self)[item]
+    def __len__(self):
+        return 6
+    
+@dataclass
+class AllXgtfData:
+    xgtfData:list[XgtfData] = field(default_factory=list)
+
+    def __iter__(self):
+        from numpy import sum as npsum
+        statistics = XgtfData("Итого")
+        statistics.objectsCount, statistics.videoDuration, statistics.framesCount, statistics.averageObjectsInFrame = npsum([xgtf[1:-1] for xgtf in self.xgtfData], axis=0)
+        statistics.classes = set.union(*[xgtf[-1] for xgtf in self.xgtfData])
+        return iter([list(xgtf) for xgtf in self.xgtfData] + [list(statistics)])
+    def __len__(self):
+        return len(self.xgtfData)+1
     
 
 
@@ -79,7 +102,7 @@ parser.add_argument('--work-dir')
 parser.add_argument('--result-dir',nargs="?", default='result.xlsx')
 namespace = parser.parse_args()
 #
-allData = []
+allData = AllXgtfData()
 for file_name in os.listdir(namespace.work_dir):
     # Условие для обработки .xgtf
     if file_name.find(".xgtf") == -1:
@@ -91,23 +114,20 @@ for file_name in os.listdir(namespace.work_dir):
     try:
         tree = ET.parse(os.path.join(namespace.work_dir, file_name))
     except ET.ParseError:
-        allData.append(data)
+        allData.xgtfData.append(data)
         continue
     print(os.path.join(namespace.work_dir, file_name))
     root_data_sourcefile = tree.getroot().find(f'./{VIPER}data/{VIPER}sourcefile')
     
     # Количество объектов
-    classes = []
-    count_of_objects = 0
+    data.objectsCount = 0
     for objects in root_data_sourcefile.findall(f'./{VIPER}object/{VIPER}attribute[@name="Class"]'):
-        count_of_objects += 1
+        data.objectsCount += 1
+        # Классы
         try:
-            classes.append(objects.find(f'./{VIPERDATA}svalue').attrib['value'])
+            data.classes.add(objects.find(f'./{VIPERDATA}svalue').attrib['value'])
         except AttributeError:
-            classes.append(get_default_value_for_class(tree))
-    data.objectsCount = count_of_objects
-    # Классы
-    data.classes = ','.join(set(classes))
+            data.classes.add(get_default_value_for_class(tree))
     # Длинна видео (секунд)
     root_data_sourcefile_file = root_data_sourcefile.find(f'./{VIPER}file')
     try:
@@ -120,15 +140,15 @@ for file_name in os.listdir(namespace.work_dir):
 
     try:
         # Расчет времени
-        data.videoDuration = calculate_time(numframes / framerate)
+        data.videoDuration = numframes / framerate
         # Среднее кол-во объектов на кадре
-        data.averageObjectsInFrame = count_of_objects / numframes
+        data.averageObjectsInFrame = data.objectsCount / numframes
         # Длинна видео (кадры)
         data.framesCount = numframes
     except ZeroDivisionError:
         pass
     
     # Сохраняем в общий массив
-    allData.append(list(data))
-df = pd.DataFrame(allData, columns=['Имя', 'Количество объектов', 'Длинна видео (секунд)', 'Длинна видео (кадры)', 'Среднее кол-во объектов на кадре', 'Классы'])
+    allData.xgtfData.append(data)
+df = pd.DataFrame(list(allData), columns=['Имя', 'Количество объектов', 'Длинна видео (секунд)', 'Длинна видео (кадры)', 'Среднее кол-во объектов на кадре', 'Классы'])
 df.style.applymap(painting_errors).to_excel(namespace.result_dir)
