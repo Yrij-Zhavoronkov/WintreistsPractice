@@ -60,20 +60,18 @@ def painting_errors(element):
 
 @dataclass
 class XgtfData:
-    
     fileName:str
     objectsCount:Optional[int]=None
     videoDuration:Optional[float]=None
     framesCount:Optional[float]=None
-    averageObjectsInFrame:Optional[float]=None
     classes:Optional[set[Optional[str]]]=field(default_factory=set)
 
     def __iter__(self):
         return iter([self.fileName, self.objectsCount, calculate_time(self.videoDuration),
-                self.framesCount, self.averageObjectsInFrame, ",".join(self.classes)])
+                self.framesCount, self.objectsCount/self.framesCount, ",".join(self.classes)])
     def to_list(self) -> list:
         return [self.fileName, self.objectsCount, self.videoDuration,
-                self.framesCount, self.averageObjectsInFrame, self.classes]
+                self.framesCount, self.objectsCount/self.framesCount, self.classes]
 
 @dataclass
 class AllXgtfData:
@@ -82,75 +80,73 @@ class AllXgtfData:
     def __iter__(self):
         from numpy import sum as npsum
         statistics = XgtfData("Итого")
-        statistics.objectsCount, statistics.videoDuration, statistics.framesCount, statistics.averageObjectsInFrame = npsum([xgtf.to_list()[1:-1] for xgtf in self.xgtfData], axis=0)
-        statistics.classes = set.union(*[xgtf.to_list()[-1] for xgtf in self.xgtfData])
+        statistics.objectsCount, statistics.videoDuration, statistics.framesCount = npsum([xgtf.to_list()[1:-2] for xgtf in self.xgtfData], axis=0)
+        statistics.classes = set.union(*[xgtf.classes for xgtf in self.xgtfData])
         return iter([list(xgtf) for xgtf in self.xgtfData] + [list(statistics)])
     
 
+if __name__ == "__main__":
+    # Аргументы
+    parser = ArgumentParser()
+    parser.add_argument('--work-dir')
+    parser.add_argument('--result-dir',nargs="?", default='result.xlsx')
+    namespace = parser.parse_args()
+    #
+    allData = AllXgtfData()
+    for file_name in os.listdir(namespace.work_dir):
+        # Условие для обработки .xgtf
+        if file_name.find(".xgtf") == -1:
+            continue
+        # Подготовка
+        # Имя
+        data = XgtfData(file_name)
 
-# Аргументы
-parser = ArgumentParser()
-parser.add_argument('--work-dir')
-parser.add_argument('--result-dir',nargs="?", default='result.xlsx')
-namespace = parser.parse_args()
-#
-allData = AllXgtfData()
-for file_name in os.listdir(namespace.work_dir):
-    # Условие для обработки .xgtf
-    if file_name.find(".xgtf") == -1:
-        continue
-    # Подготовка
-    # Имя
-    data = XgtfData(file_name)
-
-    try:
-        tree = ET.parse(os.path.join(namespace.work_dir, file_name))
-    except ET.ParseError:
-        allData.xgtfData.append(data)
-        continue
-    print(os.path.join(namespace.work_dir, file_name))
-    root_data_sourcefile = tree.getroot().find(f'./{VIPER}data/{VIPER}sourcefile')
-    
-    # Количество объектов
-    data.objectsCount = 0
-    for objects in root_data_sourcefile.findall(f'./{VIPER}object/{VIPER}attribute[@name="Class"]'):
-        data.objectsCount += 1
-        # Классы
         try:
-            data.classes.add(objects.find(f'./{VIPERDATA}svalue').attrib['value'])
+            tree = ET.parse(os.path.join(namespace.work_dir, file_name))
+        except ET.ParseError:
+            allData.xgtfData.append(data)
+            continue
+        print(os.path.join(namespace.work_dir, file_name))
+        root_data_sourcefile = tree.getroot().find(f'./{VIPER}data/{VIPER}sourcefile')
+        
+        # Количество объектов
+        data.objectsCount = 0
+        for objects in root_data_sourcefile.findall(f'./{VIPER}object/{VIPER}attribute[@name="Class"]'):
+            data.objectsCount += 1
+            # Классы
+            try:
+                data.classes.add(objects.find(f'./{VIPERDATA}svalue').attrib['value'])
+            except AttributeError:
+                data.classes.add(get_default_value_for_class(tree))
+        # Длинна видео (секунд)
+        root_data_sourcefile_file = root_data_sourcefile.find(f'./{VIPER}file')
+        try:
+            numframes = float(root_data_sourcefile_file.find(f'./{VIPER}attribute[@name="NUMFRAMES"]/').attrib['value']) # NUMFRAMES
+            framerate = float(root_data_sourcefile_file.find(f'.//{VIPER}attribute[@name="FRAMERATE"]/').attrib['value'])  # FRAMERATE
+            if numframes == 0 or framerate == 0:
+                raise AttributeError
         except AttributeError:
-            data.classes.add(get_default_value_for_class(tree))
-    # Длинна видео (секунд)
-    root_data_sourcefile_file = root_data_sourcefile.find(f'./{VIPER}file')
-    try:
-        numframes = float(root_data_sourcefile_file.find(f'./{VIPER}attribute[@name="NUMFRAMES"]/').attrib['value']) # NUMFRAMES
-        framerate = float(root_data_sourcefile_file.find(f'.//{VIPER}attribute[@name="FRAMERATE"]/').attrib['value'])  # FRAMERATE
-        if numframes == 0 or framerate == 0:
-            raise AttributeError
-    except AttributeError:
-        numframes,framerate = get_fps_and_numframes_from_video(namespace.work_dir, file_name)
+            numframes,framerate = get_fps_and_numframes_from_video(namespace.work_dir, file_name)
 
-    try:
-        # Расчет времени
-        data.videoDuration = numframes / framerate
-        # Среднее кол-во объектов на кадре
-        data.averageObjectsInFrame = data.objectsCount / numframes
-        # Длинна видео (кадры)
-        data.framesCount = numframes
-    except ZeroDivisionError:
-        pass
-    
-    # Сохраняем в общий массив
-    allData.xgtfData.append(data)
+        try:
+            # Расчет времени
+            data.videoDuration = numframes / framerate
+            # Длинна видео (кадры)
+            data.framesCount = numframes
+        except ZeroDivisionError:
+            pass
+        
+        # Сохраняем в общий массив
+        allData.xgtfData.append(data)
 
-# Вывод в файл
-df = pd.DataFrame(allData, columns=['Имя', 'Количество объектов', 'Длинна видео (секунд)', 'Длинна видео (кадры)', 'Среднее кол-во объектов на кадре', 'Классы'])
-writer = pd.ExcelWriter(namespace.result_dir, engine='xlsxwriter') 
-df.style.applymap(painting_errors).to_excel(writer, sheet_name='Sheet1', index=False, na_rep='NaN')
+    # Вывод в файл
+    df = pd.DataFrame(allData, columns=['Имя', 'Количество объектов', 'Длинна видео (секунд)', 'Длинна видео (кадры)', 'Среднее кол-во объектов на кадре', 'Классы'])
+    writer = pd.ExcelWriter(namespace.result_dir, engine='xlsxwriter') 
+    df.style.applymap(painting_errors).to_excel(writer, sheet_name='Sheet1', index=False, na_rep='NaN')
 
-for column in df:
-    column_length = max(df[column].astype(str).map(len).max(), len(column)) + 1
-    col_idx = df.columns.get_loc(column)
-    writer.sheets['Sheet1'].set_column(col_idx, col_idx, column_length)
+    for column in df:
+        column_length = max(df[column].astype(str).map(len).max(), len(column)) + 1
+        col_idx = df.columns.get_loc(column)
+        writer.sheets['Sheet1'].set_column(col_idx, col_idx, column_length)
 
-writer.save()
+    writer.save()
