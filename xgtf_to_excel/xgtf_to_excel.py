@@ -16,7 +16,7 @@ VIPERDATA = "{http://lamp.cfar.umd.edu/viperdata#}"
 
 def get_fps_and_numframes_from_video(work_dir:str, file_name:str) -> Tuple[float, float]:
     extensions = ["mkv", "mp4", "mpeg", "mov", "avi"]
-    file_name = ".".join(file_name.split(".")[:-1])
+    file_name = file_name.removesuffix(".xgtf")
     video_path = None
     for video_name in [f"{file_name}.{extension}" for extension in extensions]:
         if os.path.isfile(os.path.join(work_dir, video_name)):
@@ -84,13 +84,11 @@ class XgtfData:
 class AllXgtfData:
     _xgtfData:list[XgtfData] = field(default_factory=list)
 
-    def __iter__(self):
+    def to_excel(self) -> list:
         statistics = XgtfData("Итого")
         statistics.objectsCount, statistics.videoDuration, statistics.framesCount = npsum([[xgtf.objectsCount, xgtf.videoDuration, xgtf.framesCount] for xgtf in self._xgtfData], axis=0)
         statistics.classes = set.union(*[xgtf.classes for xgtf in self._xgtfData])
-        return iter([xgtf for xgtf in self._xgtfData] + [statistics])
-    def to_excel(self) -> list:
-        return [xgtf.to_excel() for xgtf in self]
+        return iter([xgtf.to_excel() for xgtf in self._xgtfData] + [statistics.to_excel()])
     def append(self, element:XgtfData):
         self._xgtfData.append(element)
     
