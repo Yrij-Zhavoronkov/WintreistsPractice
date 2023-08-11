@@ -67,22 +67,30 @@ class XgtfData:
     classes:Optional[set[Optional[str]]]=field(default_factory=set)
 
     def __iter__(self):
-        return iter([self.fileName, self.objectsCount, calculate_time(self.videoDuration),
-                self.framesCount, self.objectsCount/self.framesCount, ",".join(self.classes)])
-    def to_list(self) -> list:
-        return [self.fileName, self.objectsCount, self.videoDuration,
-                self.framesCount, self.objectsCount/self.framesCount, self.classes]
+        return iter([self.fileName, self.objectsCount, self.videoDuration,
+                self.framesCount, self.objectsCount/self.framesCount, self.classes])
+    def __getitem__(self, item):
+        return list(self)[item]
+    def to_excel(self) -> list:
+        return [self.fileName, self.objectsCount, calculate_time(self.videoDuration),
+                self.framesCount, self.objectsCount/self.framesCount, ",".join(self.classes)]
+    
+    
 
 @dataclass
 class AllXgtfData:
-    xgtfData:list[XgtfData] = field(default_factory=list)
+    _xgtfData:list[XgtfData] = field(default_factory=list)
 
     def __iter__(self):
         from numpy import sum as npsum
         statistics = XgtfData("Итого")
-        statistics.objectsCount, statistics.videoDuration, statistics.framesCount = npsum([xgtf.to_list()[1:-2] for xgtf in self.xgtfData], axis=0)
-        statistics.classes = set.union(*[xgtf.classes for xgtf in self.xgtfData])
-        return iter([list(xgtf) for xgtf in self.xgtfData] + [list(statistics)])
+        statistics.objectsCount, statistics.videoDuration, statistics.framesCount = npsum([xgtf[1:-2] for xgtf in self._xgtfData], axis=0)
+        statistics.classes = set.union(*[xgtf.classes for xgtf in self._xgtfData])
+        return iter([xgtf for xgtf in self._xgtfData] + [statistics])
+    def to_excel(self) -> list:
+        return [xgtf.to_excel() for xgtf in self]
+    def append(self, element:XgtfData):
+        self._xgtfData.append(element)
     
 
 if __name__ == "__main__":
@@ -104,7 +112,7 @@ if __name__ == "__main__":
         try:
             tree = ET.parse(os.path.join(namespace.work_dir, file_name))
         except ET.ParseError:
-            allData.xgtfData.append(data)
+            allData.append(data)
             continue
         print(os.path.join(namespace.work_dir, file_name))
         root_data_sourcefile = tree.getroot().find(f'./{VIPER}data/{VIPER}sourcefile')
@@ -137,10 +145,10 @@ if __name__ == "__main__":
             pass
         
         # Сохраняем в общий массив
-        allData.xgtfData.append(data)
+        allData.append(data)
 
     # Вывод в файл
-    df = pd.DataFrame(allData, columns=['Имя', 'Количество объектов', 'Длинна видео (секунд)', 'Длинна видео (кадры)', 'Среднее кол-во объектов на кадре', 'Классы'])
+    df = pd.DataFrame(allData.to_excel(), columns=['Имя', 'Количество объектов', 'Длинна видео (секунд)', 'Длинна видео (кадры)', 'Среднее кол-во объектов на кадре', 'Классы'])
     writer = pd.ExcelWriter(namespace.result_dir, engine='xlsxwriter') 
     df.style.applymap(painting_errors).to_excel(writer, sheet_name='Sheet1', index=False, na_rep='NaN')
 
@@ -149,4 +157,4 @@ if __name__ == "__main__":
         col_idx = df.columns.get_loc(column)
         writer.sheets['Sheet1'].set_column(col_idx, col_idx, column_length)
 
-    writer.save()
+    writer.close()
