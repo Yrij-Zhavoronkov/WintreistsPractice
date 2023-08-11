@@ -16,7 +16,7 @@ VIPERDATA = "{http://lamp.cfar.umd.edu/viperdata#}"
 
 def get_fps_and_numframes_from_video(work_dir:str, file_name:str) -> Tuple[float, float]:
     extensions = ["mkv", "mp4", "mpeg", "mov", "avi"]
-    file_name = file_name.split('.')[0]
+    file_name = ".".join(file_name.split(".")[:-1])
     video_path = None
     for video_name in [f"{file_name}.{extension}" for extension in extensions]:
         if os.path.isfile(os.path.join(work_dir, video_name)):
