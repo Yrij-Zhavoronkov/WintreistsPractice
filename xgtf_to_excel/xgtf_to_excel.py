@@ -126,23 +126,21 @@ if __name__ == "__main__":
                 data.classes.add(objects.find(f'./{VIPERDATA}svalue').attrib['value'])
             except AttributeError:
                 data.classes.add(get_default_value_for_class(tree))
-        # Длинна видео (секунд)
+        
         root_data_sourcefile_file = root_data_sourcefile.find(f'./{VIPER}file')
         try:
-            numframes = float(root_data_sourcefile_file.find(f'./{VIPER}attribute[@name="NUMFRAMES"]/').attrib['value']) # NUMFRAMES
+            # Длинна видео (кадры)
+            data.framesCount = float(root_data_sourcefile_file.find(f'./{VIPER}attribute[@name="NUMFRAMES"]/').attrib['value']) # NUMFRAMES
             framerate = float(root_data_sourcefile_file.find(f'.//{VIPER}attribute[@name="FRAMERATE"]/').attrib['value'])  # FRAMERATE
-            if numframes == 0 or framerate == 0:
+            if data.framesCount == 0 or framerate == 0:
                 raise AttributeError
         except AttributeError:
-            numframes,framerate = get_fps_and_numframes_from_video(namespace.work_dir, file_name)
+            data.framesCount,framerate = get_fps_and_numframes_from_video(namespace.work_dir, file_name)
 
-        try:
+        if framerate != 0:
             # Расчет времени
-            data.videoDuration = numframes / framerate
-            # Длинна видео (кадры)
-            data.framesCount = numframes
-        except ZeroDivisionError:
-            pass
+            data.videoDuration = data.framesCount / framerate
+        
         
         # Сохраняем в общий массив
         allData.append(data)
