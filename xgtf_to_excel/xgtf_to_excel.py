@@ -6,6 +6,7 @@ import cv2
 from dataclasses import dataclass, field
 from typing import Optional, Tuple
 from math import isnan
+from numpy import sum as npsum
 
 
 # Константы
@@ -15,8 +16,9 @@ VIPERDATA = "{http://lamp.cfar.umd.edu/viperdata#}"
 
 def get_fps_and_numframes_from_video(work_dir:str, file_name:str) -> Tuple[float, float]:
     extensions = ["mkv", "mp4", "mpeg", "mov", "avi"]
+    file_name = file_name.split('.')[0]
     video_path = None
-    for video_name in [f"{file_name.split('.')[0]}.{extension}" for extension in extensions]:
+    for video_name in [f"{file_name}.{extension}" for extension in extensions]:
         if os.path.isfile(os.path.join(work_dir, video_name)):
             video_path = os.path.join(work_dir, video_name)
             break
@@ -47,6 +49,8 @@ def painting_errors(element):
     elif isinstance(element, str):
         if "None" in element or element == "":
             return 'background-color: #ff4c5b;'
+        elif element == "0:0:0":
+            return 'background-color: #ff4c5b;'
     elif isinstance(element, float):
         if element == 0.0:
             return 'background-color: #ff4c5b;'
@@ -61,19 +65,18 @@ def painting_errors(element):
 @dataclass
 class XgtfData:
     fileName:str
-    objectsCount:Optional[int]=None
-    videoDuration:Optional[float]=None
-    framesCount:Optional[float]=None
+    objectsCount:int=0
+    videoDuration:float=0.0
+    framesCount:float=0.0
     classes:Optional[set[Optional[str]]]=field(default_factory=set)
 
-    def __iter__(self):
-        return iter([self.fileName, self.objectsCount, self.videoDuration,
-                self.framesCount, self.objectsCount/self.framesCount, self.classes])
-    def __getitem__(self, item):
-        return list(self)[item]
     def to_excel(self) -> list:
-        return [self.fileName, self.objectsCount, calculate_time(self.videoDuration),
-                self.framesCount, self.objectsCount/self.framesCount, ",".join(self.classes)]
+        return [self.fileName,
+                self.objectsCount, 
+                calculate_time(self.videoDuration),
+                self.framesCount, 
+                self.objectsCount/self.framesCount if self.framesCount != 0 else 0.0,
+                ",".join(self.classes)]
     
     
 
@@ -82,9 +85,8 @@ class AllXgtfData:
     _xgtfData:list[XgtfData] = field(default_factory=list)
 
     def __iter__(self):
-        from numpy import sum as npsum
         statistics = XgtfData("Итого")
-        statistics.objectsCount, statistics.videoDuration, statistics.framesCount = npsum([xgtf[1:-2] for xgtf in self._xgtfData], axis=0)
+        statistics.objectsCount, statistics.videoDuration, statistics.framesCount = npsum([[xgtf.objectsCount, xgtf.videoDuration, xgtf.framesCount] for xgtf in self._xgtfData], axis=0)
         statistics.classes = set.union(*[xgtf.classes for xgtf in self._xgtfData])
         return iter([xgtf for xgtf in self._xgtfData] + [statistics])
     def to_excel(self) -> list:
@@ -96,7 +98,7 @@ class AllXgtfData:
 if __name__ == "__main__":
     # Аргументы
     parser = ArgumentParser()
-    parser.add_argument('--work-dir')
+    parser.add_argument('--work-dir', required=True)
     parser.add_argument('--result-dir',nargs="?", default='result.xlsx')
     namespace = parser.parse_args()
     #
