@@ -122,7 +122,7 @@ if __name__ == "__main__":
         # Количество рамок объектов
         for v_object in root_data_sourcefile.findall(f'./{VIPER}object'):
             for bbox in v_object.findall(f'./{VIPER}attribute[@name="Position"]/{VIPERDATA}bbox'):
-                data.objectsFramesCount = sum([right-left+1 for splited_bbox in bbox.attrib["framespan"].split(" ") for left, right in [map(int, splited_bbox.split(":"))]])
+                data.objectsFramesCount += sum([right-left+1 for splited_bbox in bbox.attrib["framespan"].split(" ") for left, right in [map(int, splited_bbox.split(":"))]])
                 
             # Классы
             try:
