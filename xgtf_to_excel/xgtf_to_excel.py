@@ -65,20 +65,19 @@ def painting_errors(element):
 @dataclass
 class XgtfData:
     fileName:str
-    objectsCount:int=0
+    objectsFramesCount:int=0
     videoDuration:float=0.0
     framesCount:float=0.0
     classes:Optional[set[Optional[str]]]=field(default_factory=set)
 
     def to_excel(self) -> list:
         return [self.fileName,
-                self.objectsCount, 
+                self.objectsFramesCount, 
                 calculate_time(self.videoDuration),
                 self.framesCount, 
-                self.objectsCount/self.framesCount if self.framesCount != 0 else 0.0,
+                self.objectsFramesCount/self.framesCount if self.framesCount != 0 else 0.0,
                 ",".join(self.classes)]
-    
-    
+    pass
 
 @dataclass
 class AllXgtfData:
@@ -86,11 +85,14 @@ class AllXgtfData:
 
     def to_excel(self) -> list:
         statistics = XgtfData("Итого")
-        statistics.objectsCount, statistics.videoDuration, statistics.framesCount = npsum([[xgtf.objectsCount, xgtf.videoDuration, xgtf.framesCount] for xgtf in self._xgtfData], axis=0)
+        statistics.objectsFramesCount, statistics.videoDuration, statistics.framesCount = npsum([[xgtf.objectsFramesCount, xgtf.videoDuration, xgtf.framesCount] for xgtf in self._xgtfData], axis=0)
         statistics.classes = set.union(*[xgtf.classes for xgtf in self._xgtfData])
         return iter([xgtf.to_excel() for xgtf in self._xgtfData] + [statistics.to_excel()])
     def append(self, element:XgtfData):
         self._xgtfData.append(element)
+        pass
+    pass
+
     
 
 if __name__ == "__main__":
@@ -117,13 +119,15 @@ if __name__ == "__main__":
         print(os.path.join(namespace.work_dir, file_name))
         root_data_sourcefile = tree.getroot().find(f'./{VIPER}data/{VIPER}sourcefile')
         
-        # Количество объектов
-        data.objectsCount = 0
-        for objects in root_data_sourcefile.findall(f'./{VIPER}object/{VIPER}attribute[@name="Class"]'):
-            data.objectsCount += 1
+        # Количество рамок объектов
+        for v_object in root_data_sourcefile.findall(f'./{VIPER}object'):
+            for bbox in v_object.findall(f'./{VIPER}attribute[@name="Position"]/{VIPERDATA}bbox'):
+                framespan = [[int(numbers) for numbers in splited_bbox.split(':')] for splited_bbox in bbox.attrib['framespan'].split(" ")]
+                for frames in framespan:
+                    data.objectsFramesCount += frames[1]-frames[0]+1
             # Классы
             try:
-                data.classes.add(objects.find(f'./{VIPERDATA}svalue').attrib['value'])
+                data.classes.add(object.find(f'./{VIPER}attribute[@name="Class"]/{VIPERDATA}svalue').attrib['value'])
             except AttributeError:
                 data.classes.add(get_default_value_for_class(tree))
         
@@ -146,7 +150,7 @@ if __name__ == "__main__":
         allData.append(data)
 
     # Вывод в файл
-    df = pd.DataFrame(allData.to_excel(), columns=['Имя', 'Количество объектов', 'Длинна видео (секунд)', 'Длинна видео (кадры)', 'Среднее кол-во объектов на кадре', 'Классы'])
+    df = pd.DataFrame(allData.to_excel(), columns=['Имя', 'Количество объектов', 'Длинна видео (секунд)', 'Длинна видео (кадры)', 'Среднее кол-во рамок объектов на кадре', 'Классы'])
     writer = pd.ExcelWriter(namespace.result_dir, engine='xlsxwriter') 
     df.style.applymap(painting_errors).to_excel(writer, sheet_name='Sheet1', index=False, na_rep='NaN')
 
