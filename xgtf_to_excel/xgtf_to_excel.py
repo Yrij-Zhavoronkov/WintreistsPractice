@@ -87,7 +87,7 @@ class AllXgtfData:
         statistics = XgtfData("Итого")
         statistics.objectsFramesCount, statistics.videoDuration, statistics.framesCount = npsum([[xgtf.objectsFramesCount, xgtf.videoDuration, xgtf.framesCount] for xgtf in self._xgtfData], axis=0)
         statistics.classes = set.union(*[xgtf.classes for xgtf in self._xgtfData])
-        return iter([xgtf.to_excel() for xgtf in self._xgtfData] + [statistics.to_excel()])
+        return [xgtf.to_excel() for xgtf in self._xgtfData] + [statistics.to_excel()]
     def append(self, element:XgtfData):
         self._xgtfData.append(element)
         pass
@@ -122,9 +122,8 @@ if __name__ == "__main__":
         # Количество рамок объектов
         for v_object in root_data_sourcefile.findall(f'./{VIPER}object'):
             for bbox in v_object.findall(f'./{VIPER}attribute[@name="Position"]/{VIPERDATA}bbox'):
-                framespan = [[int(numbers) for numbers in splited_bbox.split(':')] for splited_bbox in bbox.attrib['framespan'].split(" ")]
-                for frames in framespan:
-                    data.objectsFramesCount += frames[1]-frames[0]+1
+                data.objectsFramesCount = sum([right-left+1 for splited_bbox in bbox.attrib["framespan"].split(" ") for left, right in [map(int, splited_bbox.split(":"))]])
+                
             # Классы
             try:
                 data.classes.add(object.find(f'./{VIPER}attribute[@name="Class"]/{VIPERDATA}svalue').attrib['value'])
