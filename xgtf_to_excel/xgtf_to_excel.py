@@ -86,7 +86,7 @@ class AllXgtfData:
 
     def to_excel(self) -> list:
         statistics = XgtfData("Итого")
-        statistics.objectsCount, statistics.videoDuration, statistics.framesCount = npsum([[xgtf.objectsFramesCount, xgtf.videoDuration, xgtf.framesCount] for xgtf in self._xgtfData], axis=0)
+        statistics.objectsCount, statistics.videoDuration, statistics.framesCount, statistics.objectsFramesCount = npsum([[xgtf.objectsFramesCount, xgtf.videoDuration, xgtf.framesCount, xgtf.objectsFramesCount] for xgtf in self._xgtfData], axis=0)
         statistics.classes = set.union(*[xgtf.classes for xgtf in self._xgtfData])
         return [xgtf.to_excel() for xgtf in self._xgtfData] + [statistics.to_excel()]
     def append(self, element:XgtfData):
@@ -128,7 +128,7 @@ if __name__ == "__main__":
                 
             # Классы
             try:
-                data.classes.add(object.find(f'./{VIPER}attribute[@name="Class"]/{VIPERDATA}svalue').attrib['value'])
+                data.classes.add(v_object.find(f'./{VIPER}attribute[@name="Class"]/{VIPERDATA}svalue').attrib['value'])
             except AttributeError:
                 data.classes.add(get_default_value_for_class(tree))
         
