@@ -65,6 +65,7 @@ def painting_errors(element):
 @dataclass
 class XgtfData:
     fileName:str
+    objectsCount:int=0
     objectsFramesCount:int=0
     videoDuration:float=0.0
     framesCount:float=0.0
@@ -72,7 +73,7 @@ class XgtfData:
 
     def to_excel(self) -> list:
         return [self.fileName,
-                self.objectsFramesCount, 
+                self.objectsCount, 
                 calculate_time(self.videoDuration),
                 self.framesCount, 
                 self.objectsFramesCount/self.framesCount if self.framesCount != 0 else 0.0,
@@ -85,7 +86,7 @@ class AllXgtfData:
 
     def to_excel(self) -> list:
         statistics = XgtfData("Итого")
-        statistics.objectsFramesCount, statistics.videoDuration, statistics.framesCount = npsum([[xgtf.objectsFramesCount, xgtf.videoDuration, xgtf.framesCount] for xgtf in self._xgtfData], axis=0)
+        statistics.objectsCount, statistics.videoDuration, statistics.framesCount = npsum([[xgtf.objectsFramesCount, xgtf.videoDuration, xgtf.framesCount] for xgtf in self._xgtfData], axis=0)
         statistics.classes = set.union(*[xgtf.classes for xgtf in self._xgtfData])
         return [xgtf.to_excel() for xgtf in self._xgtfData] + [statistics.to_excel()]
     def append(self, element:XgtfData):
@@ -121,6 +122,7 @@ if __name__ == "__main__":
         
         # Количество рамок объектов
         for v_object in root_data_sourcefile.findall(f'./{VIPER}object'):
+            data.objectsCount += 1
             for bbox in v_object.findall(f'./{VIPER}attribute[@name="Position"]/{VIPERDATA}bbox'):
                 data.objectsFramesCount += sum([right-left+1 for splited_bbox in bbox.attrib["framespan"].split(" ") for left, right in [map(int, splited_bbox.split(":"))]])
                 
