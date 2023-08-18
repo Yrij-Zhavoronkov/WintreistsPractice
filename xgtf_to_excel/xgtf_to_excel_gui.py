@@ -2,10 +2,9 @@ import sys
 import os
 from functools import partial
 import subprocess as sub
-from PyQt6 import uic, QtGui, QtCore
+from PyQt6 import uic, QtGui
 from PyQt6.QtWidgets import QMainWindow, QApplication, QPushButton, QLineEdit, QFileDialog, QMessageBox, QProgressBar
-from multiprocessing import Pipe, Process, Queue
-from multiprocessing.connection import PipeConnection
+from multiprocessing import Pipe, Process
 from xgtf_to_excel import xgtf_to_excel_work
 
 
@@ -68,29 +67,34 @@ class MainWindow(QMainWindow):
         pass
 
     def start_program(self):
-        if self.input_work_dir.text() == '':
+        if not self.input_work_dir.text():
             QMessageBox.critical(self, "Ошибка запуска", "Вы не ввели рабочую директорию!")
             return False
-        if self.input_file_name.text() == '':
+
+        if not self.input_file_name.text():
             QMessageBox.critical(self, "Ошибка запуска", "Вы не ввели название файла с результатом!")
             return False
+
         work_dir = os.path.join(self.input_work_dir.text())
-        result_dir = os.path.join(self.input_result_dir.text(), self.input_file_name.text()+".xlsx")
+        result_dir = os.path.join(self.input_result_dir.text(), self.input_file_name.text() + ".xlsx")
+
         parent_conn, child_conn = Pipe()
         script = Process(target=xgtf_to_excel_work, args=(work_dir, result_dir, child_conn))
         script.start()
+
         all_len = parent_conn.recv()
         data = parent_conn.recv()
+
         while data != -1:
-            self.progressBar.setValue(int(data*100/all_len))
+            self.progressBar.setValue(int(data * 100 / all_len))
             data = parent_conn.recv()
+
         self.progressBar.setValue(100)
         self.button_open_result_file.setVisible(True)
         self.button_open_result_file.clicked.connect(partial(self.open_result_file, result_dir))
-        pass
 
     def open_result_file(self, file_path:str):
-        os.system("start " + file_path)
+        sub.run(["start", file_path], shell=True)
         pass
 
 if __name__ == '__main__':
