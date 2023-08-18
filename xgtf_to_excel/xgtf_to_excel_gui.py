@@ -4,6 +4,9 @@ from functools import partial
 import subprocess as sub
 from PyQt6 import uic, QtGui, QtCore
 from PyQt6.QtWidgets import QMainWindow, QApplication, QPushButton, QLineEdit, QFileDialog, QMessageBox, QProgressBar
+from multiprocessing import Pipe, Process, Queue
+from multiprocessing.connection import PipeConnection
+from xgtf_to_excel import xgtf_to_excel_work
 
 
 class MainWindow(QMainWindow):
@@ -23,6 +26,8 @@ class MainWindow(QMainWindow):
         self.button_clear_input = self.findChild(QPushButton, "button_clear_input")
         self.button_start = self.findChild(QPushButton, "button_start")
         self.button_open_result_file = self.findChild(QPushButton, "button_open_result_file")
+
+        self.progressBar = self.findChild(QProgressBar, "progressBar")
         # ~~~~~~~~
         # Значения по умолчанию
         self.set_default_value()
@@ -52,6 +57,8 @@ class MainWindow(QMainWindow):
     def set_default_value(self):
         self.input_file_name.setText("result")
         self.input_result_dir.setText(os.getcwd())
+        self.progressBar.setValue(0)
+        self.button_open_result_file.setVisible(False)
         pass
 
     def clear_all_inputs(self):
@@ -69,7 +76,15 @@ class MainWindow(QMainWindow):
             return False
         work_dir = os.path.join(self.input_work_dir.text())
         result_dir = os.path.join(self.input_result_dir.text(), self.input_file_name.text()+".xlsx")
-        sub.run(['../venv/Scripts/python.exe', 'xgtf_to_excel.py', '--work-dir', work_dir, '--result-dir', result_dir])
+        parent_conn, child_conn = Pipe()
+        script = Process(target=xgtf_to_excel_work, args=(work_dir, result_dir, child_conn))
+        script.start()
+        all_len = parent_conn.recv()
+        data = parent_conn.recv()
+        while data != -1:
+            self.progressBar.setValue(int(data*100/all_len))
+            data = parent_conn.recv()
+        self.progressBar.setValue(100)
         self.button_open_result_file.setVisible(True)
         self.button_open_result_file.clicked.connect(partial(self.open_result_file, result_dir))
         pass
@@ -79,8 +94,7 @@ class MainWindow(QMainWindow):
         pass
 
 if __name__ == '__main__':
-    file_path = os.path.realpath(__file__[:__file__.rfind("\\")])
-    os.chdir(file_path)
+    os.chdir(os.path.realpath(__file__[:__file__.rfind("\\")]))
     app = QApplication(sys.argv)
     app.setWindowIcon(QtGui.QIcon('icon.png'))
     main_window = MainWindow()
