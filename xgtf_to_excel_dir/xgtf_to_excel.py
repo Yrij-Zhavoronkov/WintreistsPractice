@@ -100,7 +100,7 @@ def xgtf_to_excel_work(work_dir, result_dir = os.path.join(os.getcwd(), 'result.
     bar = alive_it(os.listdir(work_dir)) if callback is None else os.listdir(work_dir)
     for file_name in bar:
         if callback is not None:
-            callback(int((bar.index(file_name)+1) * 100 / len(bar)))
+            callback(int(bar.index(file_name) * 100 / len(bar)))
         # Условие для обработки .xgtf
         if file_name.find(".xgtf") == -1:
             continue
@@ -157,6 +157,8 @@ def xgtf_to_excel_work(work_dir, result_dir = os.path.join(os.getcwd(), 'result.
         writer.sheets['Sheet1'].set_column(col_idx, col_idx, column_length)
 
     writer.close()
+    if callback:
+        callback(100)
     
 
 if __name__ == "__main__":

@@ -16,7 +16,7 @@ class MainWindow(QMainWindow):
 
     def __init__(self):
         super(MainWindow, self).__init__()
-        uic.loadUi('untitled.ui', self)
+        uic.loadUi('xgtf_to_excel_dir/untitled.ui', self)
 
         
         # Определение виджетов
@@ -108,8 +108,8 @@ class MainWindow(QMainWindow):
         pass
 
 if __name__ == '__main__':
-    os.chdir(os.path.realpath(__file__[:__file__.rfind("\\")]))
+    # os.chdir(os.path.realpath(__file__[:__file__.rfind("\\")]))
     app = QApplication(sys.argv)
-    app.setWindowIcon(QtGui.QIcon('icon.png'))
+    app.setWindowIcon(QtGui.QIcon('xgtf_to_excel_dir/icon.png'))
     main_window = MainWindow()
     app.exec()
