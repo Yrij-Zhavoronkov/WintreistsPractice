@@ -5,7 +5,9 @@ import subprocess as sub
 from PyQt6 import uic, QtGui
 from PyQt6.QtWidgets import QMainWindow, QApplication, QPushButton, QLineEdit, QFileDialog, QMessageBox, QProgressBar
 from multiprocessing import Pipe, Process
+from multiprocessing.connection import PipeConnection
 from xgtf_to_excel import xgtf_to_excel_work
+from threading import Thread
 
 
 class MainWindow(QMainWindow):
@@ -83,15 +85,23 @@ class MainWindow(QMainWindow):
         script.start()
 
         all_len = parent_conn.recv()
+
+        self.progressBar.valueChanged.connect(partial(self.updateProgressBar, all_len, parent_conn, result_dir, script))
+        self.progressBar.setValue(0)
+
+
+    def updateProgressBar(self, all_len, parent_conn:PipeConnection, result_dir:str, script:Process):
         data = parent_conn.recv()
-
-        while data != -1:
+        if data != -1:
             self.progressBar.setValue(int(data * 100 / all_len))
-            data = parent_conn.recv()
+        else:
+            self.progressBar.valueChanged.disconnect()
+            self.progressBar.setValue(100)
+            script.join()
+            self.button_open_result_file.setVisible(True)
+            self.button_open_result_file.clicked.connect(partial(self.open_result_file, result_dir))
 
-        self.progressBar.setValue(100)
-        self.button_open_result_file.setVisible(True)
-        self.button_open_result_file.clicked.connect(partial(self.open_result_file, result_dir))
+
 
     def open_result_file(self, file_path:str):
         sub.run(["start", file_path], shell=True)

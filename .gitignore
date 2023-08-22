@@ -6,3 +6,5 @@ xgtf_to_excel/result.xlsx
 .idea/inspectionProfiles/profiles_settings.xml
 .idea/.gitignore
 result.xlsx
+
+gui-for-tester-tracker
