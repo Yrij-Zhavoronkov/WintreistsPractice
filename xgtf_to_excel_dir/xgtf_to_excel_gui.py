@@ -97,7 +97,7 @@ class MainWindow(QMainWindow):
 
 
     def threadFunctionForBackgroundProcess(self, work_dir:str, result_dir:str, updateSignal:pyqtSignal, endSignal:pyqtSignal):
-        callback = lambda x: updateSignal.emit(x)
+        callback = updateSignal.emit
         xgtf_to_excel_work(work_dir, result_dir, callback)
         endSignal.emit()
 
