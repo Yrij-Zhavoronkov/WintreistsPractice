@@ -6,7 +6,10 @@ from PyQt6.QtWidgets import (
     QApplication, 
     QMainWindow, 
     QFileDialog,
-    QListWidget,)
+    QListWidget,
+    QHBoxLayout,
+    QWidget,
+    QListWidgetItem)
 from PyQt6 import uic, QtGui
 from PyQt6.QtCore import QSettings, Qt
 
@@ -123,6 +126,25 @@ class MainWindow(QMainWindow):
         self.checkBox_hide_stationary_objects.setChecked(bool(self.settings.value(self.checkBox_hide_stationary_objects.objectName(), False)))
         self.checkBox_use_MOT.setChecked(bool(self.settings.value(self.checkBox_use_MOT.objectName(), False)))
 
+        items = self.settings.value(self.listWidget_list_classes.objectName(), {
+            "Human":True,
+            "car":False
+        })
+        for class_name, check_state in items.items():
+            widget = QWidget()
+            layout = QHBoxLayout(widget)
+            checkbox = QCheckBox(class_name)
+            checkbox.setChecked(check_state)
+            toolButton = QToolButton()
+            toolButton.setText('-')
+            toolButton.clicked.connect(partial(self.removeClass, checkbox))
+            layout.addWidget(checkbox)
+            layout.addWidget(toolButton)
+            list_item = QListWidgetItem()
+            self.listWidget_list_classes.addItem(list_item)
+            self.listWidget_list_classes.setItemWidget(list_item, widget)
+
+
 
 
     def saveState(self):
@@ -141,6 +163,8 @@ class MainWindow(QMainWindow):
         self.settings.setValue(self.checkBox_use_MOT.objectName(), True if self.checkBox_use_MOT.checkState() == Qt.CheckState.Checked else '')
 
 
+    def removeClass(self, item):
+        pass
 
     def closeEvent(self, event):
         self.saveState()
