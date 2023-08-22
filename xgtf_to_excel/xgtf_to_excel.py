@@ -4,12 +4,10 @@ import xml.etree.ElementTree as ET
 from argparse import ArgumentParser
 import cv2
 from dataclasses import dataclass, field
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Callable
 from math import isnan
 from numpy import sum as npsum
 from alive_progress import alive_it
-from multiprocessing import Process, Pipe
-from multiprocessing.connection import PipeConnection
 
 
 # Константы
@@ -97,14 +95,12 @@ class AllXgtfData:
         pass
     pass
 
-def xgtf_to_excel_work(work_dir, result_dir = os.path.join(os.getcwd(), 'result.xlsx'), pipe:Optional[PipeConnection]=None):
+def xgtf_to_excel_work(work_dir, result_dir = os.path.join(os.getcwd(), 'result.xlsx'), callback:Optional[Callable[[int], None]]=None):
     allData = AllXgtfData()
-    bar = alive_it(os.listdir(work_dir)) if pipe is None else os.listdir(work_dir)
-    if pipe is not None:
-        pipe.send(len(bar))
+    bar = alive_it(os.listdir(work_dir)) if callback is None else os.listdir(work_dir)
     for file_name in bar:
-        if pipe is not None:
-            pipe.send(bar.index(file_name))
+        if callback is not None:
+            callback(int((bar.index(file_name)+1) * 100 / len(bar)))
         # Условие для обработки .xgtf
         if file_name.find(".xgtf") == -1:
             continue
@@ -149,8 +145,6 @@ def xgtf_to_excel_work(work_dir, result_dir = os.path.join(os.getcwd(), 'result.
         
         # Сохраняем в общий массив
         allData.append(data)
-    if pipe is not None:
-        pipe.send(-1)
 
     # Вывод в файл
     df = pd.DataFrame(allData.to_excel(), columns=['Имя', 'Количество объектов', 'Длинна видео (секунд)', 'Длинна видео (кадры)', 'Среднее кол-во рамок объектов на кадре', 'Классы'])

@@ -4,18 +4,21 @@ from functools import partial
 import subprocess as sub
 from PyQt6 import uic, QtGui
 from PyQt6.QtWidgets import QMainWindow, QApplication, QPushButton, QLineEdit, QFileDialog, QMessageBox, QProgressBar
-from multiprocessing import Pipe, Process
-from multiprocessing.connection import PipeConnection
-from xgtf_to_excel import xgtf_to_excel_work
+from PyQt6.QtCore import pyqtSignal
 from threading import Thread
+from xgtf_to_excel import xgtf_to_excel_work
 
 
 class MainWindow(QMainWindow):
+    
+    updateProgressBarSignal = pyqtSignal(int)
+    endBackgroundProcess = pyqtSignal()
+
     def __init__(self):
         super(MainWindow, self).__init__()
         uic.loadUi('untitled.ui', self)
 
-
+        
         # Определение виджетов
         self.input_work_dir = self.findChild(QLineEdit, "input_work_dir")
         self.input_result_dir = self.findChild(QLineEdit, "input_result_dir")
@@ -39,6 +42,7 @@ class MainWindow(QMainWindow):
         self.button_open_result_file.setVisible(False)
         # ~~~~~~~~
         # Сигналы
+
         self.button_select_work_dir.clicked.connect(partial(self.openFileExplorer, self.input_work_dir))
         self.button_select_result_dir.clicked.connect(partial(self.openFileExplorer, self.input_result_dir))
         self.button_exit.clicked.connect(self.close)
@@ -77,29 +81,25 @@ class MainWindow(QMainWindow):
             QMessageBox.critical(self, "Ошибка запуска", "Вы не ввели название файла с результатом!")
             return False
 
+        self.button_start.setEnabled(False)
         work_dir = os.path.join(self.input_work_dir.text())
         result_dir = os.path.join(self.input_result_dir.text(), self.input_file_name.text() + ".xlsx")
 
-        parent_conn, child_conn = Pipe()
-        script = Process(target=xgtf_to_excel_work, args=(work_dir, result_dir, child_conn))
-        script.start()
+        self.updateProgressBarSignal.connect(self.progressBar.setValue)
+        self.endBackgroundProcess.connect(partial(self.endBackgroundProcessFunction, result_dir))
+        self.backgroundThread = Thread(target=self.threadFunctionForBackgroundProcess, args=(work_dir, result_dir, self.updateProgressBarSignal, self.endBackgroundProcess))
+        self.backgroundThread.start()
 
-        all_len = parent_conn.recv()
+    def endBackgroundProcessFunction(self, result_dir:str):
+        self.button_start.setEnabled(True)
+        self.button_open_result_file.setVisible(True)
+        self.button_open_result_file.clicked.connect(partial(self.open_result_file, result_dir))
 
-        self.progressBar.valueChanged.connect(partial(self.updateProgressBar, all_len, parent_conn, result_dir, script))
-        self.progressBar.setValue(0)
 
-
-    def updateProgressBar(self, all_len, parent_conn:PipeConnection, result_dir:str, script:Process):
-        data = parent_conn.recv()
-        if data != -1:
-            self.progressBar.setValue(int(data * 100 / all_len))
-        else:
-            self.progressBar.valueChanged.disconnect()
-            self.progressBar.setValue(100)
-            script.join()
-            self.button_open_result_file.setVisible(True)
-            self.button_open_result_file.clicked.connect(partial(self.open_result_file, result_dir))
+    def threadFunctionForBackgroundProcess(self, work_dir:str, result_dir:str, updateSignal:pyqtSignal, endSignal:pyqtSignal):
+        callback = lambda x: updateSignal.emit(x)
+        xgtf_to_excel_work(work_dir, result_dir, callback)
+        endSignal.emit()
 
 
 
