@@ -14,9 +14,8 @@ from PyQt6.QtCore import QSettings, Qt
 import sys
 import os
 from functools import partial
-import subprocess as sub
 import sys
-from gui import Ui_MainWindow
+# from gui import Ui_MainWindow
 
 
 class MainWindow(QMainWindow):
