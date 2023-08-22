@@ -2,3 +2,10 @@ xgtf_to_excel_dir/result.xlsx
 gui-for-tester-tracker/save_state_pyqt.py
 gui-for-tester-tracker/gui_for_tester_tracker
 xgtf_to_excel_dir/result.xlsx
+.idea/misc.xml
+.idea/modules.xml
+.idea/vcs.xml
+.idea/WintreistsPractice.iml
+.idea/inspectionProfiles/profiles_settings.xml
+.idea/.gitignore
+result.xlsx
