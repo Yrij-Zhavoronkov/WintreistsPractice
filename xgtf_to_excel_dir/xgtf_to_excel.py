@@ -4,9 +4,10 @@ import xml.etree.ElementTree as ET
 from argparse import ArgumentParser
 import cv2
 from dataclasses import dataclass, field
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Callable
 from math import isnan
 from numpy import sum as npsum
+from alive_progress import alive_it
 
 
 # Константы
@@ -94,17 +95,12 @@ class AllXgtfData:
         pass
     pass
 
-    
-
-if __name__ == "__main__":
-    # Аргументы
-    parser = ArgumentParser()
-    parser.add_argument('--work-dir', required=True)
-    parser.add_argument('--result-dir',nargs="?", default='result.xlsx')
-    namespace = parser.parse_args()
-    #
+def xgtf_to_excel_work(work_dir, result_dir = os.path.join(os.getcwd(), 'result.xlsx'), callback:Optional[Callable[[int], None]]=None):
     allData = AllXgtfData()
-    for file_name in os.listdir(namespace.work_dir):
+    bar = alive_it(os.listdir(work_dir)) if callback is None else os.listdir(work_dir)
+    for file_name in bar:
+        if callback is not None:
+            callback(int(bar.index(file_name) * 100 / len(bar)))
         # Условие для обработки .xgtf
         if file_name.find(".xgtf") == -1:
             continue
@@ -113,11 +109,11 @@ if __name__ == "__main__":
         data = XgtfData(file_name)
 
         try:
-            tree = ET.parse(os.path.join(namespace.work_dir, file_name))
+            tree = ET.parse(os.path.join(work_dir, file_name))
         except ET.ParseError:
             allData.append(data)
             continue
-        print(os.path.join(namespace.work_dir, file_name))
+        print(os.path.join(work_dir, file_name))
         root_data_sourcefile = tree.getroot().find(f'./{VIPER}data/{VIPER}sourcefile')
         
         # Количество рамок объектов
@@ -140,7 +136,7 @@ if __name__ == "__main__":
             if data.framesCount == 0 or framerate == 0:
                 raise AttributeError
         except AttributeError:
-            data.framesCount,framerate = get_fps_and_numframes_from_video(namespace.work_dir, file_name)
+            data.framesCount,framerate = get_fps_and_numframes_from_video(work_dir, file_name)
 
         if framerate != 0:
             # Расчет времени
@@ -152,7 +148,7 @@ if __name__ == "__main__":
 
     # Вывод в файл
     df = pd.DataFrame(allData.to_excel(), columns=['Имя', 'Количество объектов', 'Длинна видео (секунд)', 'Длинна видео (кадры)', 'Среднее кол-во рамок объектов на кадре', 'Классы'])
-    writer = pd.ExcelWriter(namespace.result_dir, engine='xlsxwriter') 
+    writer = pd.ExcelWriter(result_dir, engine='xlsxwriter') 
     df.style.applymap(painting_errors).to_excel(writer, sheet_name='Sheet1', index=False, na_rep='NaN')
 
     for column in df:
@@ -161,3 +157,16 @@ if __name__ == "__main__":
         writer.sheets['Sheet1'].set_column(col_idx, col_idx, column_length)
 
     writer.close()
+    if callback:
+        callback(100)
+    
+
+if __name__ == "__main__":
+    # Аргументы
+    parser = ArgumentParser()
+    parser.add_argument('--work-dir', required=True)
+    parser.add_argument('--result-dir',nargs="?", default='result.xlsx')
+    namespace = parser.parse_args()
+    #
+    xgtf_to_excel_work(namespace.work_dir, namespace.result_dir)
+    

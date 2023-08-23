@@ -1,4 +1,4 @@
-xgtf_to_excel/result.xlsx
+xgtf_to_excel_dir/result.xlsx
 .idea/misc.xml
 .idea/modules.xml
 .idea/vcs.xml
@@ -6,3 +6,5 @@ xgtf_to_excel/result.xlsx
 .idea/inspectionProfiles/profiles_settings.xml
 .idea/.gitignore
 result.xlsx
+
+gui-for-tester-tracker
