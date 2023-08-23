@@ -37,7 +37,7 @@ class MainWindow(QMainWindow):
         # self.ui = Ui_MainWindow()
         # self.ui.setupUi(self)
 
-        self.settings = QSettings('gui_for_tester_tracker', QSettings.Format.IniFormat)
+        # self.settings = QSettings('gui-for-tester-tracker/gui_for_tester_tracker.ini', QSettings.Format.IniFormat)
 
         # Определение виджетов
         self.pushButton_start_work = self.findChild(QPushButton, 'pushButton_start_work')
@@ -74,9 +74,16 @@ class MainWindow(QMainWindow):
         self.checkBox_use_MOT = self.findChild(QCheckBox, 'checkBox_use_MOT')
 
         self.lineEdit_IOU_threshold = self.findChild(QLineEdit, 'lineEdit_IOU_threshold')
+
+        # Меню
+        # Конфиг
+        self.action_save_config = self.findChild(QtGui.QAction, 'action_save_config')
+        self.action_save_config.triggered.connect(self.saveState)
+        self.action_load_config = self.findChild(QtGui.QAction, 'action_load_config')
+        self.action_load_config.triggered.connect(self.loadState)
         # ~~~~~
         # Загрузка состояния виджетов
-        self.loadState()
+        # self.loadState()
         # ~~~~~
         # Свойства виджетов
         # ~~~~~~~~
@@ -140,69 +147,76 @@ class MainWindow(QMainWindow):
         pass
     
     def loadState(self):
-        self.lineEdit_to_markup_dir.setText(self.settings.value(self.lineEdit_to_markup_dir.objectName(), ""))
-        self.lineEdit_to_networks_dir.setText(self.settings.value(self.lineEdit_to_networks_dir.objectName(), ""))
-        self.lineEdit_to_result_dir.setText(self.settings.value(self.lineEdit_to_result_dir.objectName(), "/results"))
-        self.lineEdit_path_to_siamese_neural_network.setText(self.settings.value(self.lineEdit_path_to_siamese_neural_network.objectName(), ""))
-        self.lineEdit_path_to_epf_file.setText(self.settings.value(self.lineEdit_path_to_epf_file.objectName(), ""))
-        self.lineEdit_confidence_threshold.setText(self.settings.value(self.lineEdit_confidence_threshold.objectName(), "0.3"))
-        self.lineEdit_minimum_number_of_triggers.setText(self.settings.value(self.lineEdit_minimum_number_of_triggers.objectName(), "6"))
-        self.lineEdit_IOU_threshold.setText(self.settings.value(self.lineEdit_IOU_threshold.objectName(), "0.3"))
-        self.lineEdit_sensitivity_detector_stationary_objects.setText(self.settings.value(self.lineEdit_sensitivity_detector_stationary_objects.objectName(), "0.5"))
-        self.lineEdit_fps.setText(self.settings.value(self.lineEdit_fps.objectName(), "13"))
+        path_to_settings = QFileDialog.getOpenFileName(self, 'Выберите файл настроек')
+        if path_to_settings[0]:
+            self.settings = QSettings(path_to_settings[0], QSettings.Format.IniFormat)
 
-        self.checkBox_hide_stationary_objects.setChecked(bool(self.settings.value(self.checkBox_hide_stationary_objects.objectName(), False)))
-        self.checkBox_use_MOT.setChecked(bool(self.settings.value(self.checkBox_use_MOT.objectName(), False)))
+            self.lineEdit_to_markup_dir.setText(self.settings.value(self.lineEdit_to_markup_dir.objectName(), ""))
+            self.lineEdit_to_networks_dir.setText(self.settings.value(self.lineEdit_to_networks_dir.objectName(), ""))
+            self.lineEdit_to_result_dir.setText(self.settings.value(self.lineEdit_to_result_dir.objectName(), "/results"))
+            self.lineEdit_path_to_siamese_neural_network.setText(self.settings.value(self.lineEdit_path_to_siamese_neural_network.objectName(), ""))
+            self.lineEdit_path_to_epf_file.setText(self.settings.value(self.lineEdit_path_to_epf_file.objectName(), ""))
+            self.lineEdit_confidence_threshold.setText(self.settings.value(self.lineEdit_confidence_threshold.objectName(), "0.3"))
+            self.lineEdit_minimum_number_of_triggers.setText(self.settings.value(self.lineEdit_minimum_number_of_triggers.objectName(), "6"))
+            self.lineEdit_IOU_threshold.setText(self.settings.value(self.lineEdit_IOU_threshold.objectName(), "0.3"))
+            self.lineEdit_sensitivity_detector_stationary_objects.setText(self.settings.value(self.lineEdit_sensitivity_detector_stationary_objects.objectName(), "0.5"))
+            self.lineEdit_fps.setText(self.settings.value(self.lineEdit_fps.objectName(), "13"))
 
-        items = self.settings.value(self.listWidget_list_classes.objectName(), {
-            "Human":True
-        })
-        for class_name, check_state in items.items():
-            self.addClass(lambda: class_name, check_state)
+            self.checkBox_hide_stationary_objects.setChecked(bool(self.settings.value(self.checkBox_hide_stationary_objects.objectName(), False)))
+            self.checkBox_use_MOT.setChecked(bool(self.settings.value(self.checkBox_use_MOT.objectName(), False)))
+
+            items = self.settings.value(self.listWidget_list_classes.objectName(), {
+                "Human":True
+            })
+            for class_name, check_state in items.items():
+                self.addClass(lambda: class_name, check_state)
 
 
 
 
     def saveState(self):
-        self.settings.setValue(self.lineEdit_confidence_threshold.objectName(), self.lineEdit_confidence_threshold.text())
-        self.settings.setValue(self.lineEdit_minimum_number_of_triggers.objectName(), self.lineEdit_minimum_number_of_triggers.text())
-        self.settings.setValue(self.lineEdit_IOU_threshold.objectName(), self.lineEdit_IOU_threshold.text())
-        self.settings.setValue(self.lineEdit_sensitivity_detector_stationary_objects.objectName(), self.lineEdit_sensitivity_detector_stationary_objects.text())
-        self.settings.setValue(self.lineEdit_fps.objectName(), self.lineEdit_fps.text())
-        self.settings.setValue(self.lineEdit_path_to_siamese_neural_network.objectName(), self.lineEdit_path_to_siamese_neural_network.text())
-        self.settings.setValue(self.lineEdit_path_to_epf_file.objectName(), self.lineEdit_path_to_epf_file.text())
-        self.settings.setValue(self.lineEdit_to_markup_dir.objectName(), self.lineEdit_to_markup_dir.text())
-        self.settings.setValue(self.lineEdit_to_networks_dir.objectName(), self.lineEdit_to_networks_dir.text())
-        self.settings.setValue(self.lineEdit_to_result_dir.objectName(), self.lineEdit_to_result_dir.text())
+        path_to_settings = QFileDialog.getOpenFileName(self, 'Выберите файл настроек')
+        if path_to_settings[0]:
+            self.settings = QSettings(path_to_settings[0], QSettings.Format.IniFormat)
 
-        self.settings.setValue(self.checkBox_hide_stationary_objects.objectName(), True if self.checkBox_hide_stationary_objects.checkState() == Qt.CheckState.Checked else '')
-        self.settings.setValue(self.checkBox_use_MOT.objectName(), True if self.checkBox_use_MOT.checkState() == Qt.CheckState.Checked else '')
+            self.settings.setValue(self.lineEdit_confidence_threshold.objectName(), self.lineEdit_confidence_threshold.text())
+            self.settings.setValue(self.lineEdit_minimum_number_of_triggers.objectName(), self.lineEdit_minimum_number_of_triggers.text())
+            self.settings.setValue(self.lineEdit_IOU_threshold.objectName(), self.lineEdit_IOU_threshold.text())
+            self.settings.setValue(self.lineEdit_sensitivity_detector_stationary_objects.objectName(), self.lineEdit_sensitivity_detector_stationary_objects.text())
+            self.settings.setValue(self.lineEdit_fps.objectName(), self.lineEdit_fps.text())
+            self.settings.setValue(self.lineEdit_path_to_siamese_neural_network.objectName(), self.lineEdit_path_to_siamese_neural_network.text())
+            self.settings.setValue(self.lineEdit_path_to_epf_file.objectName(), self.lineEdit_path_to_epf_file.text())
+            self.settings.setValue(self.lineEdit_to_markup_dir.objectName(), self.lineEdit_to_markup_dir.text())
+            self.settings.setValue(self.lineEdit_to_networks_dir.objectName(), self.lineEdit_to_networks_dir.text())
+            self.settings.setValue(self.lineEdit_to_result_dir.objectName(), self.lineEdit_to_result_dir.text())
 
-        classes = {}
-        for index in range(self.listWidget_list_classes.count()):
-            item = self.listWidget_list_classes.item(index)
-            widget:ListItemClass = self.listWidget_list_classes.itemWidget(item)
-            classes[widget.checkbox.text()] = widget.checkbox.isChecked()
-        self.settings.setValue(self.listWidget_list_classes.objectName(), classes)
+            self.settings.setValue(self.checkBox_hide_stationary_objects.objectName(), True if self.checkBox_hide_stationary_objects.checkState() == Qt.CheckState.Checked else '')
+            self.settings.setValue(self.checkBox_use_MOT.objectName(), True if self.checkBox_use_MOT.checkState() == Qt.CheckState.Checked else '')
+
+            classes = {}
+            for index in range(self.listWidget_list_classes.count()):
+                item = self.listWidget_list_classes.item(index)
+                widget:ListItemClass = self.listWidget_list_classes.itemWidget(item)
+                classes[widget.checkbox.text()] = widget.checkbox.isChecked()
+            self.settings.setValue(self.listWidget_list_classes.objectName(), classes)
 
 
-    def addClass(self, class_name:Callable[[None], str], check_state, isAddedFromLineEdit=False):
-        widget = ListItemClass(class_name(), check_state)
-        list_item = QListWidgetItem()
-        list_item.setFlags(list_item.flags() & ~Qt.ItemFlag.ItemIsSelectable)
-        list_item.setSizeHint(QSize(0, 40))
-        self.listWidget_list_classes.addItem(list_item)
-        self.listWidget_list_classes.setItemWidget(list_item, widget)
-        widget.toolButton.clicked.connect(partial(self.removeClass, list_item))
-        if isAddedFromLineEdit:
-            self.lineEdit_add_new_class.setText("")
-        pass
+    def addClass(self, class_name:Callable[[], str], check_state, isAddedFromLineEdit=False):
+        if class_name():
+            widget = ListItemClass(class_name(), check_state)
+            list_item = QListWidgetItem()
+            list_item.setFlags(list_item.flags() & ~Qt.ItemFlag.ItemIsSelectable)
+            list_item.setSizeHint(QSize(0, 40))
+            self.listWidget_list_classes.addItem(list_item)
+            self.listWidget_list_classes.setItemWidget(list_item, widget)
+            widget.toolButton.clicked.connect(partial(self.removeClass, list_item))
+            if isAddedFromLineEdit:
+                self.lineEdit_add_new_class.setText("")
+            pass
     def removeClass(self, item):
         self.listWidget_list_classes.takeItem(self.listWidget_list_classes.row(item))
         pass
 
-    def closeEvent(self, event):
-        self.saveState()
         
 
 class ListItemClass(QWidget):
@@ -221,8 +235,9 @@ class ListItemClass(QWidget):
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
-    app.setWindowIcon(QtGui.QIcon('gui-for-tester-tracker/app_icon.png'))
+    app.setWindowIcon(QtGui.QIcon('gui-for-tester-tracker/icon.png'))
     window = MainWindow()
+    window.setWindowTitle("GUI for tester tracker")
     window.show()
     app.exec()
 
