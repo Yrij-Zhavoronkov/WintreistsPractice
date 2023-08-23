@@ -220,7 +220,6 @@ class ListItemClass(QWidget):
 
 
 if __name__ == '__main__':
-    os.chdir(os.path.realpath(__file__[:__file__.rfind("\\")]))
     app = QApplication(sys.argv)
     app.setWindowIcon(QtGui.QIcon('icon.png'))
     window = MainWindow()
