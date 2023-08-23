@@ -88,6 +88,8 @@ class MainWindow(QMainWindow):
         self.toolButton_select_path_to_epf_file.clicked.connect(partial(self.openFileLocation, self.lineEdit_path_to_epf_file, "Выберите путь к .epf файлу", "*.epf"))
         self.toolButton_add_class.clicked.connect(partial(self.addClass, self.lineEdit_add_new_class.text, False, True))
 
+        self.lineEdit_add_new_class.returnPressed.connect(partial(self.addClass, self.lineEdit_add_new_class.text, False, True))
+
         self.pushButton_start_work.clicked.connect(self.startWork)
 
         
@@ -187,6 +189,7 @@ class MainWindow(QMainWindow):
     def addClass(self, class_name:Callable[[None], str], check_state, isAddedFromLineEdit=False):
         widget = ListItemClass(class_name(), check_state)
         list_item = QListWidgetItem()
+        list_item.setFlags(list_item.flags() & ~Qt.ItemFlag.ItemIsSelectable)
         list_item.setSizeHint(QSize(0, 40))
         self.listWidget_list_classes.addItem(list_item)
         self.listWidget_list_classes.setItemWidget(list_item, widget)

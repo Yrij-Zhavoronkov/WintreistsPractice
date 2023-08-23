@@ -252,12 +252,12 @@
              <item row="1" column="0">
               <widget class="QLabel" name="label_8">
                <property name="text">
-                <string>Минимальное число сработок</string>
+                <string>Минимальное число срабатываний</string>
                </property>
               </widget>
              </item>
              <item row="1" column="1">
-              <widget class="QLineEdit" name="lineEdit_minimum_number_of_earnings">
+              <widget class="QLineEdit" name="lineEdit_minimum_number_of_triggers">
                <property name="text">
                 <string>6</string>
                </property>
