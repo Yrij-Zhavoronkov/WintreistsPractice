@@ -14,7 +14,6 @@ from PyQt6.QtWidgets import (
     QSizePolicy,)
 from PyQt6 import uic, QtGui
 from PyQt6.QtCore import QSettings, Qt, QSize, pyqtSignal
-
 import sys
 import os
 from functools import partial
@@ -23,25 +22,20 @@ from typing import Callable
 from tester import main as testerTrackerMain
 # from gui import Ui_MainWindow
 
-
 class MainWindow(QMainWindow):
-
     # Сигналы
     onProgressWork = pyqtSignal(int, int, str, str)
-    endWork = pyqtSignal()
+    # ~~~~~~~
+
 
     def __init__(self):
         super(MainWindow, self).__init__()
         uic.loadUi('gui-for-tester-tracker/gui.ui', self)
-
         # self.ui = Ui_MainWindow()
         # self.ui.setupUi(self)
 
-        # self.settings = QSettings('gui-for-tester-tracker/gui_for_tester_tracker.ini', QSettings.Format.IniFormat)
-
         # Определение виджетов
         self.pushButton_start_work = self.findChild(QPushButton, 'pushButton_start_work')
-
         # Tab Widget
         # Параметры тестера
         self.lineEdit_to_networks_dir = self.findChild(QLineEdit, 'lineEdit_to_networks_dir')
@@ -57,8 +51,6 @@ class MainWindow(QMainWindow):
         self.toolButton_add_class = self.findChild(QToolButton, 'toolButton_add_class')
         
         self.listWidget_list_classes = self.findChild(QListWidget, 'listWidget_list_classes')
-        
-        
         # Параметры трекера
         self.checkBox_hide_stationary_objects = self.findChild(QCheckBox, 'checkBox_hide_stationary_objects')
 
@@ -69,12 +61,10 @@ class MainWindow(QMainWindow):
         self.lineEdit_confidence_threshold = self.findChild(QLineEdit, 'lineEdit_confidence_threshold')
 
         self.toolButton_select_path_to_siamese_neural_network = self.findChild(QToolButton, 'toolButton_select_path_to_siamese_neural_network')
-
         # Использование MOT
         self.checkBox_use_MOT = self.findChild(QCheckBox, 'checkBox_use_MOT')
 
         self.lineEdit_IOU_threshold = self.findChild(QLineEdit, 'lineEdit_IOU_threshold')
-
         # Меню
         # Конфиг
         self.action_save_config = self.findChild(QtGui.QAction, 'action_save_config')
@@ -82,35 +72,34 @@ class MainWindow(QMainWindow):
         self.action_load_config = self.findChild(QtGui.QAction, 'action_load_config')
         self.action_load_config.triggered.connect(self.loadState)
         # ~~~~~
-        # Загрузка состояния виджетов
-        # self.loadState()
-        # ~~~~~
-        # Свойства виджетов
-        # ~~~~~~~~
         # Сигналы
         self.toolButton_select_markup_dir.clicked.connect(partial(self.openFileExplorer, self.lineEdit_to_markup_dir, "Выберите путь к папке с разметкой"))
         self.toolButton_select_networks_dir.clicked.connect(partial(self.openFileExplorer, self.lineEdit_to_networks_dir, "Выберите путь к папке с сетями"))
         self.toolButton_select_result_dir.clicked.connect(partial(self.openFileExplorer, self.lineEdit_to_result_dir, "Выберите путь к папке для сохранения результатов"))
         self.toolButton_select_path_to_siamese_neural_network.clicked.connect(partial(self.openFileLocation, self.lineEdit_path_to_siamese_neural_network, "Выберите путь к сиамской нейронной сети"))
         self.toolButton_select_path_to_epf_file.clicked.connect(partial(self.openFileLocation, self.lineEdit_path_to_epf_file, "Выберите путь к .epf файлу", "*.epf"))
-        self.toolButton_add_class.clicked.connect(partial(self.addClass, self.lineEdit_add_new_class.text, False, True))
+        self.toolButton_add_class.clicked.connect(partial(self.addClass, self.lineEdit_add_new_class.text, True, True))
 
-        self.lineEdit_add_new_class.returnPressed.connect(partial(self.addClass, self.lineEdit_add_new_class.text, False, True))
+        self.lineEdit_add_new_class.returnPressed.connect(partial(self.addClass, self.lineEdit_add_new_class.text, True, True))
+        self.lineEdit_to_networks_dir.textChanged.connect(self.allNeededLineEditsAreNotEmpty)
+        self.lineEdit_to_markup_dir.textChanged.connect(self.allNeededLineEditsAreNotEmpty)
 
         self.pushButton_start_work.clicked.connect(self.startWork)
-
-        
-        # ~~~~~~~~
-
-
-
+        pass
+    def allNeededLineEditsAreNotEmpty(self):
+        allNeededLineEdits = [
+            self.lineEdit_to_networks_dir,
+            self.lineEdit_to_markup_dir,
+        ]
+        is_filled = all(lineEdit.text() for lineEdit in allNeededLineEdits)
+        self.pushButton_start_work.setEnabled(is_filled)
+        pass
     def openFileExplorer(self, input_directory:QLineEdit, text:str=None):
         text = text if text else "Выберите директорию"
         directory = QFileDialog.getExistingDirectory(self, text)
         if directory:
             input_directory.setText(directory)
         pass
-
     def openFileLocation(self, lineEdit_file_location:QLineEdit, text:str=None, filter:str=None):
         text = text if text else "Выберите файл"
         filter = filter if filter else None
@@ -118,7 +107,6 @@ class MainWindow(QMainWindow):
         if file_location[0]:
             lineEdit_file_location.setText(file_location[0])
         pass
-
     def startWork(self):
         testing_classes = []
         for index in range(self.listWidget_list_classes.count()):
@@ -145,7 +133,6 @@ class MainWindow(QMainWindow):
         )
         self.show()
         pass
-    
     def loadState(self):
         path_to_settings = QFileDialog.getOpenFileName(self, 'Выберите файл настроек')
         if path_to_settings[0]:
@@ -171,12 +158,9 @@ class MainWindow(QMainWindow):
             })
             for class_name, check_state in items.items():
                 self.addClass(lambda: class_name, check_state)
-
-
-
-
+        pass
     def saveState(self):
-        path_to_settings = QFileDialog.getOpenFileName(self, 'Выберите файл настроек')
+        path_to_settings = QFileDialog.getSaveFileName(self, "Выберите путь\файл настроек")
         if path_to_settings[0]:
             self.settings = QSettings(path_to_settings[0], QSettings.Format.IniFormat)
 
@@ -200,8 +184,7 @@ class MainWindow(QMainWindow):
                 widget:ListItemClass = self.listWidget_list_classes.itemWidget(item)
                 classes[widget.checkbox.text()] = widget.checkbox.isChecked()
             self.settings.setValue(self.listWidget_list_classes.objectName(), classes)
-
-
+        pass
     def addClass(self, class_name:Callable[[], str], check_state, isAddedFromLineEdit=False):
         if class_name():
             widget = ListItemClass(class_name(), check_state)
@@ -213,12 +196,11 @@ class MainWindow(QMainWindow):
             widget.toolButton.clicked.connect(partial(self.removeClass, list_item))
             if isAddedFromLineEdit:
                 self.lineEdit_add_new_class.setText("")
-            pass
+        pass
     def removeClass(self, item):
         self.listWidget_list_classes.takeItem(self.listWidget_list_classes.row(item))
         pass
-
-        
+    pass
 
 class ListItemClass(QWidget):
     def __init__(self, class_name, check_state):
@@ -232,7 +214,8 @@ class ListItemClass(QWidget):
         self.layout.addWidget(self.checkbox)
         self.layout.addItem(self.spacer)
         self.layout.addWidget(self.toolButton)
-
+        pass
+    pass
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
