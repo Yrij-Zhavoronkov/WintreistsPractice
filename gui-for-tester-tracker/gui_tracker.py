@@ -165,6 +165,7 @@ class MainWindow(QMainWindow):
             self.checkBox_hide_stationary_objects.setChecked(bool(self.settings.value(self.checkBox_hide_stationary_objects.objectName(), False)))
             self.checkBox_use_MOT.setChecked(bool(self.settings.value(self.checkBox_use_MOT.objectName(), False)))
 
+            self.listWidget_list_classes.clear()
             items = self.settings.value(self.listWidget_list_classes.objectName(), {
                 "Human":True
             })
