@@ -30,7 +30,7 @@ class MainWindow(QMainWindow):
 
     def __init__(self):
         super(MainWindow, self).__init__()
-        uic.loadUi('gui-for-tester-tracker/gui.ui', self)
+        uic.loadUi(os.path.join(path, 'gui.ui'), self)
         # self.ui = Ui_MainWindow()
         # self.ui.setupUi(self)
 
@@ -217,9 +217,10 @@ class ListItemClass(QWidget):
         pass
     pass
 
+path = os.path.dirname(os.path.realpath(__file__))
 if __name__ == '__main__':
     app = QApplication(sys.argv)
-    app.setWindowIcon(QtGui.QIcon('gui-for-tester-tracker/icon.png'))
+    app.setWindowIcon(QtGui.QIcon(os.path.join(path, 'icon.png')))
     window = MainWindow()
     window.setWindowTitle("GUI for tester tracker")
     window.show()
