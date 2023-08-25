@@ -1,0 +1,1 @@
+C:\Users\User\PycharmProjects\WintreistsPractice\venv\Scripts\python.exe -m PyQt6.uic.pyuic C:\Users\User\PycharmProjects\WintreistsPractice\gui-for-tester-tracker\gui.ui -o C:\Users\User\PycharmProjects\WintreistsPractice\gui-for-tester-tracker\gui.py

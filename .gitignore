@@ -1,4 +1,6 @@
-xgtf_to_excel/result.xlsx
+xgtf_to_excel_dir/result.xlsx
+gui-for-tester-tracker/save_state_pyqt.py
+gui-for-tester-tracker/gui_for_tester_tracker
 .idea/misc.xml
 .idea/modules.xml
 .idea/vcs.xml
