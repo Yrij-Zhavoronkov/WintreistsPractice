@@ -1,6 +1,7 @@
 import sys
 import os
 from functools import partial
+from pathlib import Path
 from typing import Callable
 from PyQt6.QtWidgets import (
     QLineEdit, QToolButton, QCheckBox,
@@ -218,9 +219,9 @@ class ListItemClass(QWidget):
 
 
 if __name__ == '__main__':
-    _path = os.path.dirname(os.path.realpath(__file__))
+    _path = Path(__file__).parent
     app = QApplication(sys.argv)
-    app.setWindowIcon(QtGui.QIcon(os.path.join(_path, 'icon.png')))
+    app.setWindowIcon(QtGui.QIcon(_path.joinpath('icon.png').__str__()))
     window = MainWindow()
     window.setWindowTitle("GUI for tester tracker")
     window.show()
