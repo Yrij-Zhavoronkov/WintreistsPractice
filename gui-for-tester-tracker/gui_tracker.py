@@ -7,7 +7,7 @@ from PyQt6.QtWidgets import (
     QLineEdit, QToolButton, QCheckBox,
     QApplication, QMainWindow, QFileDialog,
     QHBoxLayout, QWidget, QListWidgetItem,
-    QSpacerItem, QSizePolicy, QMessageBox
+    QSpacerItem, QSizePolicy, QMessageBox,
 )
 from PyQt6 import QtGui
 from PyQt6.QtCore import QSettings, Qt, QSize
@@ -50,6 +50,17 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.all_needed_line_edits_are_not_empty)
 
         self.pushButton_start_work.clicked.connect(self.start_work)
+
+        # Стили
+        for filename in Path(__file__).parent.glob("./styles/*.qss"):
+            action = QtGui.QAction(
+                filename.name.rpartition(".")[0], self)
+            action.triggered.connect(
+                partial(self.set_style, filename.read_text()))
+            self.menu_2.addAction(action)
+
+    def set_style(self, style):
+        self.setStyleSheet(style)
 
     def all_needed_line_edits_are_not_empty(self):
         allNeededLineEdits = [
