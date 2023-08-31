@@ -1,0 +1,69 @@
+QWidget {
+  background-color: #fff;
+}
+
+QLabel, QCheckBox {
+  color: #464d55;
+  font-weight: 600;
+}
+QCheckBox {
+  background: transparent
+}
+
+QLineEdit {
+  border-radius: 8px;
+  border: 1px solid #e0e4e7;
+  padding: 5px 5px;
+}
+QLineEdit:focus {
+  border: 1px solid #d0e3ff;
+}
+
+QPushButton {
+  font-weight: 600;
+  border-radius: 8px;
+  padding: 5px 15px;
+}
+QPushButton:disabled {
+  background-color: #183055;
+  color: #999;
+  border: 1px solid #183055;
+}
+QPushButton:enabled {
+  background-color: #0d6efd;
+  color: #fff;
+  border: 1px solid #0d6efd;
+}
+QPushButton:hover{
+  background-color: #0b5ed7;
+  border: 3px solid #9ac3fe;
+  padding: 3px;
+}
+
+QMenuBar:item {
+	padding: 1px 4px;
+  background: transparent;
+  color: #000000;
+	background-color: #fff;
+}
+QMenuBar:item:selected {
+  background-color: #afcaf3;
+}
+QMenuBar:item:pressed {
+  background-color: #5e99f3;
+}
+
+QMenu {
+  background-color: #ffffff;
+  color: #000;
+  border: 1px solid #000000;
+}
+QMenu:item {
+  font-weight: 600;
+  padding: 5px 15px;
+  padding-left: 10px;
+}
+QMenu:item:selected {
+  background-color: #5e99f3;
+}
+

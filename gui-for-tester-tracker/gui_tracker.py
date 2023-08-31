@@ -56,11 +56,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             action = QtGui.QAction(
                 filename.name.rpartition(".")[0], self)
             action.triggered.connect(
-                partial(self.set_style, filename.read_text()))
+                partial(self.set_style, filename))
             self.menu_2.addAction(action)
 
-    def set_style(self, style):
-        self.setStyleSheet(style)
+    def set_style(self, style_filename: Path):
+        self.setStyleSheet(style_filename.read_text())
 
     def all_needed_line_edits_are_not_empty(self):
         allNeededLineEdits = [
