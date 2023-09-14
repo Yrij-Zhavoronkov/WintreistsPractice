@@ -33,6 +33,7 @@ file_name = Path(sourcefile.attrib['filename']).name
 video_framerate = 1  # video.get(cv2.CAP_PROP_FPS)
 xgtf_folder = Path(
     r'C:\Users\smeta\source\repos\WintreistsPractice\xgtf_video')
+xgtf_folder.joinpath("result").mkdir(exist_ok=True)
 
 
 for xgtf_object in sourcefile.findall(f"./{VIPER}object"):
