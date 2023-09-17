@@ -8,6 +8,7 @@ import typing
 from pathlib import Path
 import time
 import io
+from threading import Lock
 
 from MainWindow import Ui_MainWindow
 from EjectedObject import Ui_Form_Ejected_Object
@@ -37,6 +38,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # Установка соединений между виджетами
         self.setup_connections()
 
+        # Создание Lock
+        self.sorted_lock = Lock()
+        self.not_sorted_lock = Lock()
+
     def setup_properties(self):
         self.pushButton_load_next_objects.setVisible(False)
         pass
@@ -57,6 +62,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # Добавить код удаления всех объектов
 
         self.xgtf_file_name_generator = self.get_xgtf_file_name()
+        self.thread_for_ejecting_sorted_objects = ThreadForEjectingObjects(
+            next(self.xgtf_file_name_generator))
+        self.thread_for_ejecting_sorted_objects.callback_signal.connect(
+            self.create_new_sorted_object)
+        self.thread_for_ejecting_sorted_objects.start()
         self.thread_ejecting_object = ThreadForEjectingObjects(
             next(self.xgtf_file_name_generator))
         self.thread_ejecting_object.callback_signal.connect(
@@ -81,12 +91,24 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.pushButton_load_next_objects.setEnabled(True)
         self.pushButton_open_xgtf_files.setEnabled(True)
 
+    def create_new_sorted_object(self, object_data: dict):
+        self.sorted_lock.acquire()
+        grid_count = self.gridLayout_not_sorted_objects.count()
+        widget = EjectedObject(object_data, self)
+        print(grid_count, grid_count//2, grid_count % 2)
+        self.gridLayout_sorted_objects.addWidget(
+            widget, grid_count//2, grid_count % 2)
+        self.sorted_lock.release()
+        pass
+
     def create_new_not_sorted_object(self, object_data: dict):
+        self.not_sorted_lock.acquire()
         grid_count = self.gridLayout_not_sorted_objects.count()
         widget = EjectedObject(object_data, self)
 
         self.gridLayout_not_sorted_objects.addWidget(
             widget, grid_count//2, grid_count % 2)
+        self.not_sorted_lock.release()
         pass
 
     def get_xgtf_file_name(self):
