@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>880</width>
-    <height>801</height>
+    <width>1270</width>
+    <height>889</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -72,33 +72,11 @@
               </sizepolicy>
              </property>
              <property name="text">
-              <string>Готовые объекты</string>
+              <string>Отсортированные объекты</string>
              </property>
              <property name="alignment">
               <set>Qt::AlignCenter</set>
              </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="QScrollArea" name="scrollArea_2">
-             <property name="widgetResizable">
-              <bool>true</bool>
-             </property>
-             <widget class="QWidget" name="scrollAreaWidgetContents_2">
-              <property name="geometry">
-               <rect>
-                <x>0</x>
-                <y>0</y>
-                <width>404</width>
-                <height>637</height>
-               </rect>
-              </property>
-              <layout class="QVBoxLayout" name="verticalLayout_4">
-               <item>
-                <layout class="QGridLayout" name="gridLayout_sorted_objects"/>
-               </item>
-              </layout>
-             </widget>
             </widget>
            </item>
           </layout>
@@ -126,28 +104,6 @@
              </property>
             </widget>
            </item>
-           <item>
-            <widget class="QScrollArea" name="scrollArea">
-             <property name="widgetResizable">
-              <bool>true</bool>
-             </property>
-             <widget class="QWidget" name="scrollAreaWidgetContents">
-              <property name="geometry">
-               <rect>
-                <x>0</x>
-                <y>0</y>
-                <width>404</width>
-                <height>637</height>
-               </rect>
-              </property>
-              <layout class="QVBoxLayout" name="verticalLayout_6">
-               <item>
-                <layout class="QGridLayout" name="gridLayout_not_sorted_objects"/>
-               </item>
-              </layout>
-             </widget>
-            </widget>
-           </item>
           </layout>
          </widget>
         </item>
@@ -165,6 +121,16 @@
       </property>
      </widget>
     </item>
+    <item>
+     <widget class="QPushButton" name="pushButton_save_results">
+      <property name="enabled">
+       <bool>false</bool>
+      </property>
+      <property name="text">
+       <string>Сохранить результаты</string>
+      </property>
+     </widget>
+    </item>
    </layout>
   </widget>
   <widget class="QMenuBar" name="menubar">
@@ -172,7 +138,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>880</width>
+     <width>1270</width>
      <height>21</height>
     </rect>
    </property>

@@ -40,7 +40,8 @@ def eject_objects(path_to_xgtf_file: os.PathLike, callback_function: typing.Call
         objects_images = {
             "file_name": file_name,
             "object_id": object_id,
-            "images": []
+            "images": [],
+            'uuid': xgtf_object.find(f'./{VIPER}attribute[@name="UniqueId"]/').attrib['value']
         }
 
         max_width, max_height = 0, 0
@@ -121,6 +122,18 @@ def eject_objects(path_to_xgtf_file: os.PathLike, callback_function: typing.Call
                 objects_images["images"].append(io_buffer)
         callback_function(objects_images)
     video.release()
+
+
+def make_change_uuid(path_to_xgtf_file: os.PathLike, data: typing.List[typing.Dict]):
+    path_to_xgtf_file = Path(path_to_xgtf_file)
+    xgtf = ET.parse(path_to_xgtf_file)
+    sourcefile = xgtf.getroot().find(f"./{VIPER}data/{VIPER}sourcefile")
+    for object_data in data:
+        object = sourcefile.find(
+            f"./{VIPER}object[@id='{object_data['object_id']}']")
+        object.find(
+            f"./{VIPER}attribute[@name='UniqueId']/").attrib['value'] = object_data['uuid']
+    xgtf.write(str(path_to_xgtf_file), encoding="UTF-8", xml_declaration=True)
 
 
 if __name__ == '__main__':
