@@ -1,6 +1,6 @@
 import sys
 from PyQt6 import QtGui
-from PyQt6.QtWidgets import QApplication, QMainWindow, QFileDialog, QLineEdit, QWidget, QLabel, QLayout, QDialog, QVBoxLayout, QGridLayout, QMessageBox
+from PyQt6.QtWidgets import QApplication, QMainWindow, QFileDialog, QLineEdit, QWidget, QLabel, QPushButton, QDialog, QVBoxLayout, QGridLayout, QMessageBox
 from PyQt6.QtCore import QThread, QTimerEvent, pyqtSignal, Qt, QTimer, QEvent, QMimeData, QByteArray
 from PyQt6.QtGui import QPixmap, QCloseEvent, QMouseEvent, QEnterEvent, QDrag, QDragEnterEvent, QDropEvent
 from functools import partial
@@ -49,6 +49,7 @@ class EjectedObjectData(EjectedObjectDataImages, EjectedObjectDataFileNameAndObj
     uuid: str
     position: typing.Tuple[int, int] = (0, 0)
     sorted: bool = False
+    changed: bool = False
 
     def __eq__(self, other_object: object) -> bool:
         if isinstance(other_object, EjectedObjectData):
@@ -118,6 +119,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.gridLayout_not_sorted_objects = self.not_sorted_table.gridLayout
         pass
 
+    def split_objects(self, object_data: EjectedObjectData):
+        self.create_new_not_sorted_object(object_data)
+        pass
+
     def move_notSorted_to_Sorted(self, object_data: TYPE_EJECTED_OBJECT):
         self.updateGridLayout(object_data[0].position, object_data[0].sorted)
         self.deleteCombinedObject(EjectedObjectDataFileNameAndObjectID(
@@ -153,10 +158,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     def save_results(self):
         self.disable_buttons()
-        save_data = {}
+        save_data: typing.Dict[typing.List] = {}
         for widget in self.ejected_objects_widgets_list:
-            if widget.self_object_data[0].sorted:
-                for object in widget.self_object_data:
+            for object in widget.self_object_data:
+                if object.changed:
                     if object.file_name in save_data:
                         save_data[object.file_name].append({
                             'object_id': object.object_id,
@@ -201,7 +206,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             item = self.gridLayout_not_sorted_objects.takeAt(0)
             widget = item.widget()
             if widget is not None:
-                widget.close()
+                widget.deleteLater()
         while self.gridLayout_sorted_objects.count():
             item = self.gridLayout_sorted_objects.takeAt(0)
             widget = item.widget()
@@ -257,13 +262,14 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.pushButton_open_xgtf_files.setEnabled(False)
         self.pushButton_save_results.setEnabled(False)
 
-    def create_new_sorted_object(self, object_data: dict):
+    def create_new_sorted_object(self, object_data: typing.Union[typing.Dict, EjectedObjectData]):
         self.sorted_lock.acquire()
         grid_count = self.gridLayout_sorted_objects.count()
         widget = EjectedObject(
             object_data, self, (grid_count//self.EJECTED_OBJECTS_IN_ROW, grid_count % self.EJECTED_OBJECTS_IN_ROW), sorted=True)
         widget.updateGridLayout.connect(self.updateGridLayout)
         widget.deleteCombinedObject.connect(self.deleteCombinedObject)
+        widget.split_objects.connect(self.split_objects)
         self.gridLayout_sorted_objects.addWidget(
             widget, grid_count//self.EJECTED_OBJECTS_IN_ROW, grid_count % self.EJECTED_OBJECTS_IN_ROW,
             Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
@@ -276,13 +282,14 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.sorted_lock.release()
         pass
 
-    def create_new_not_sorted_object(self, object_data: dict):
+    def create_new_not_sorted_object(self, object_data: typing.Union[typing.Dict, EjectedObjectData]):
         self.not_sorted_lock.acquire()
         grid_count = self.gridLayout_not_sorted_objects.count()
-        if len(object_data['uuid']) == UUID_LENGTH:
-            self.create_new_sorted_object(object_data)
-            self.not_sorted_lock.release()
-            return None
+        if isinstance(object_data, dict):
+            if len(object_data['uuid']) == UUID_LENGTH:
+                self.create_new_sorted_object(object_data)
+                self.not_sorted_lock.release()
+                return None
         widget = EjectedObject(
             object_data, self, (grid_count//self.EJECTED_OBJECTS_IN_ROW, grid_count % self.EJECTED_OBJECTS_IN_ROW), sorted=False)
         for exist_widget in self.ejected_objects_widgets_list:
@@ -293,6 +300,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         widget.updateGridLayout.connect(self.updateGridLayout)
         widget.deleteCombinedObject.connect(self.deleteCombinedObject)
+        widget.split_objects.connect(self.split_objects)
         self.gridLayout_not_sorted_objects.addWidget(
             widget, grid_count//self.EJECTED_OBJECTS_IN_ROW, grid_count % self.EJECTED_OBJECTS_IN_ROW,
             Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
@@ -339,19 +347,24 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 class EjectedObject(QWidget, Ui_Form_Ejected_Object):
     updateGridLayout = pyqtSignal(tuple, bool)
     deleteCombinedObject = pyqtSignal(EjectedObjectDataFileNameAndObjectID)
+    split_objects = pyqtSignal(EjectedObjectData)
 
-    def __init__(self, ejected_object: dict, parent=None, position=(0, 0), sorted=False):
+    def __init__(self, ejected_object: typing.Union[typing.Dict, EjectedObjectData], parent=None, position=(0, 0), sorted=False):
         super().__init__(parent)
         self.setupUi(self)
 
         self.setAcceptDrops(True)
 
-        ejected_object_data = EjectedObjectData(
-            ejected_object['file_name'],
-            ejected_object['object_id'],
-            ejected_object['images'],
-            ejected_object['uuid']
-        )
+        if isinstance(ejected_object, dict):
+            ejected_object_data = EjectedObjectData(
+                ejected_object['file_name'],
+                ejected_object['object_id'],
+                ejected_object['images'],
+                ejected_object['uuid']
+            )
+        elif isinstance(ejected_object, EjectedObjectData):
+            ejected_object_data = ejected_object
+
         ejected_object_data.sorted = sorted
         ejected_object_data.position = position
 
@@ -414,8 +427,8 @@ class EjectedObject(QWidget, Ui_Form_Ejected_Object):
             event.accept()
             combining_objects_window = WindowToCombiningTwoObjects(
                 self, self.self_object_data, data)
-            combining_objects_window.setWindowTitle(
-                'Соединение двух объектов')
+            combining_objects_window.split_objects.connect(
+                self.split_objects_function)
             combining_objects_window.exec()
             if combining_objects_window.combining:
                 self.combine_objects(data)
@@ -433,7 +446,9 @@ class EjectedObject(QWidget, Ui_Form_Ejected_Object):
             for object in other_object:
                 object.sorted = True
         self.self_object_data = self.self_object_data+other_object
-        self.self_object_data[-1].uuid = self.self_object_data[0].uuid
+        if self.self_object_data[-1].uuid != self.self_object_data[0].uuid:
+            self.self_object_data[-1].uuid = self.self_object_data[0].uuid
+            self.self_object_data[-1].changed = True
         self.updateSelfObjectData()
         pass
 
@@ -461,6 +476,7 @@ class EjectedObject(QWidget, Ui_Form_Ejected_Object):
 
     def mouseDoubleClickEvent(self, event: QMouseEvent = None) -> None:
         dialog = OpenEjectedObject(self, self.self_object_data)
+        dialog.split_objects.connect(self.split_objects_function)
         dialog.exec()
         pass
 
@@ -484,14 +500,26 @@ class EjectedObject(QWidget, Ui_Form_Ejected_Object):
             self.timer.start()
 
     def createUUID(self):
+        self.self_object_data[0].changed = True
         return uuid.uuid4().hex
+
+    def split_objects_function(self, object_data: EjectedObjectData):
+        self.self_object_data.remove(object_data)
+        object_data.changed = True
+        object_data.uuid = ""
+        self.updateSelfObjectData()
+        self.split_objects.emit(object_data)
+        pass
 
 
 class WindowToCombiningTwoObjects(QDialog, Ui_combining_objects):
+    split_objects = pyqtSignal(EjectedObjectData)
+
     def __init__(self, parent, firts_object_data: TYPE_EJECTED_OBJECT, second_object_data: TYPE_EJECTED_OBJECT):
         super().__init__(parent)
         self.setupUi(self)
         self.showMaximized()
+        self.setWindowTitle('Соединение двух объектов')
 
         self.first_object_data = firts_object_data
         self.second_object_data = second_object_data
@@ -505,13 +533,34 @@ class WindowToCombiningTwoObjects(QDialog, Ui_combining_objects):
             self.verticalLayout_second_object, self.second_object_data)
 
     def setUpObjectsImages(self, layout: QVBoxLayout, objects_data: TYPE_EJECTED_OBJECT):
+        while layout.count():
+            item = layout.takeAt(0)
+            widget = item.widget()
+            if widget is not None:
+                widget.deleteLater()
         for object_data in objects_data:
             widget = QWidget(self)
-            new_layout = QVBoxLayout()
-            object_file_name = QLabel(object_data.file_name, widget)
-            object_id = QLabel(f"Object_ID: {object_data.object_id}", widget)
-            object_uuid = QLabel(f"UUID: {object_data.uuid}", widget)
-            gridLayout = QGridLayout()
+            widget_layout = QVBoxLayout()
+            gridLayout_for_data = QGridLayout()
+            gridLayout_for_images = QGridLayout()
+
+            # Наполняем полезной информацией
+            gridLayout_for_data.addWidget(
+                QLabel(object_data.file_name, widget), 0, 0
+            )
+            gridLayout_for_data.addWidget(
+                QLabel(f"Object_ID: {object_data.object_id}", widget), 1, 0
+            )
+            gridLayout_for_data.addWidget(
+                QLabel(f"UUID: {object_data.uuid}", widget), 2, 0
+            )
+            if len(objects_data) > 1 and objects_data[0] != object_data:
+                pushButton_for_split_objects = QPushButton('Разделить')
+                pushButton_for_split_objects.clicked.connect(
+                    partial(self.pushButtonFunction, object_data))
+                gridLayout_for_data.addWidget(
+                    pushButton_for_split_objects, 1, 1)
+            # Наполняем картинками
             for image in object_data.images:
                 pixmap = QPixmap()
                 image_data = image.getvalue()
@@ -519,15 +568,14 @@ class WindowToCombiningTwoObjects(QDialog, Ui_combining_objects):
                 pixmap = pixmap.scaled(100, 300)
                 label = QLabel()
                 label.setPixmap(pixmap)
-                gridLayout.addWidget(
-                    label, gridLayout.count()//4, gridLayout.count() % 4,
+                gridLayout_for_images.addWidget(
+                    label, gridLayout_for_images.count()//4, gridLayout_for_images.count() % 4,
                 )  # Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop
                 pass
-            new_layout.addWidget(object_file_name)
-            new_layout.addWidget(object_id)
-            new_layout.addWidget(object_uuid)
-            new_layout.addLayout(gridLayout)
-            widget.setLayout(new_layout)
+
+            widget_layout.addLayout(gridLayout_for_data)
+            widget_layout.addLayout(gridLayout_for_images)
+            widget.setLayout(widget_layout)
             layout.addWidget(widget)
 
     def acceptCombining(self):
@@ -537,6 +585,16 @@ class WindowToCombiningTwoObjects(QDialog, Ui_combining_objects):
     def rejectCombining(self):
         self.combining = False
         self.close()
+
+    def recreateWindowData(self):
+        self.setUpObjectsImages(
+            self.verticalLayout_first_object, self.first_object_data)
+        self.setUpObjectsImages(
+            self.verticalLayout_second_object, self.second_object_data)
+
+    def pushButtonFunction(self, object_data: EjectedObjectData):
+        self.split_objects.emit(object_data)
+        self.recreateWindowData()
 
 
 class TableObjects(QWidget, Ui_Form_table_objects):
@@ -577,6 +635,8 @@ class TableObjects(QWidget, Ui_Form_table_objects):
 
 
 class OpenEjectedObject(QDialog, Ui_Form_open_ejected_object):
+    split_objects = pyqtSignal(EjectedObjectData)
+
     def __init__(self, parent, object_data: TYPE_EJECTED_OBJECT):
         super().__init__(parent)
         self.setupUi(self)
@@ -588,7 +648,15 @@ class OpenEjectedObject(QDialog, Ui_Form_open_ejected_object):
         self.object_data = object_data
         # Заполнить виджет
         WindowToCombiningTwoObjects.setUpObjectsImages(
-            self, self.verticalLayout_main, object_data)
+            self, self.verticalLayout_main, self.object_data)
+
+    def recreateWindowData(self):
+        WindowToCombiningTwoObjects.setUpObjectsImages(
+            self, self.verticalLayout_main, self.object_data)
+
+    def pushButtonFunction(self, object_data: EjectedObjectData):
+        self.split_objects.emit(object_data)
+        self.recreateWindowData()
 
 
 if __name__ == "__main__":
