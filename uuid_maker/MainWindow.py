@@ -19,6 +19,15 @@ class Ui_MainWindow(object):
         self.verticalLayout_5.setObjectName("verticalLayout_5")
         self.horizontalLayout = QtWidgets.QHBoxLayout()
         self.horizontalLayout.setObjectName("horizontalLayout")
+        self.label_4 = QtWidgets.QLabel(parent=self.centralwidget)
+        self.label_4.setObjectName("label_4")
+        self.horizontalLayout.addWidget(self.label_4)
+        self.spinBox_ejectedObjects_in_row = QtWidgets.QSpinBox(parent=self.centralwidget)
+        self.spinBox_ejectedObjects_in_row.setMinimum(1)
+        self.spinBox_ejectedObjects_in_row.setMaximum(10)
+        self.spinBox_ejectedObjects_in_row.setProperty("value", 4)
+        self.spinBox_ejectedObjects_in_row.setObjectName("spinBox_ejectedObjects_in_row")
+        self.horizontalLayout.addWidget(self.spinBox_ejectedObjects_in_row)
         self.label_3 = QtWidgets.QLabel(parent=self.centralwidget)
         self.label_3.setObjectName("label_3")
         self.horizontalLayout.addWidget(self.label_3)
@@ -94,6 +103,7 @@ class Ui_MainWindow(object):
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
         MainWindow.setWindowTitle(_translate("MainWindow", "MainWindow"))
+        self.label_4.setText(_translate("MainWindow", "Введите количество блоков в ряду"))
         self.label_3.setText(_translate("MainWindow", "Выберите рабочую папку:"))
         self.toolButton_select_work_dir.setText(_translate("MainWindow", "..."))
         self.pushButton_open_xgtf_files.setText(_translate("MainWindow", "Загрузить объекты"))

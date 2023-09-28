@@ -31,4 +31,5 @@ class Ui_Form_Ejected_Object(object):
 
     def retranslateUi(self, Form_Ejected_Object):
         _translate = QtCore.QCoreApplication.translate
-        Form_Ejected_Object.setWindowTitle(_translate("Form_Ejected_Object", "Form"))
+        Form_Ejected_Object.setWindowTitle(
+            _translate("Form_Ejected_Object", "Form"))

@@ -2,7 +2,7 @@ import sys
 from PyQt6 import QtGui
 from PyQt6.QtWidgets import QApplication, QMainWindow, QFileDialog, QLineEdit, QWidget, QLabel, QPushButton, QDialog, QVBoxLayout, QGridLayout, QMessageBox
 from PyQt6.QtCore import QThread, QTimerEvent, pyqtSignal, Qt, QTimer, QEvent, QMimeData, QByteArray
-from PyQt6.QtGui import QPixmap, QCloseEvent, QMouseEvent, QEnterEvent, QDrag, QDragEnterEvent, QDropEvent
+from PyQt6.QtGui import QPixmap, QCloseEvent, QMouseEvent, QEnterEvent, QDrag, QDragEnterEvent, QDropEvent, QResizeEvent
 from functools import partial
 import os
 import typing
@@ -100,13 +100,35 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.ejected_objects_widgets_list: typing.List[EjectedObject] = []
 
         # Константа количества объектов в ряду
-        self.EJECTED_OBJECTS_IN_ROW = 4
+        self.EJECTED_OBJECTS_IN_ROW = self.spinBox_ejectedObjects_in_row.value()
 
         # Debug
         self.lineEdit_work_dir.setText(
             r'C:\Users\smeta\source\repos\WintreistsPractice\xgtf_video')
         self.pushButton_open_xgtf_files.setEnabled(True)
         self.pushButton_open_xgtf_files.click()
+
+    def setup_properties(self):
+        self.hide_buttons()
+        pass
+
+    def setup_connections(self):
+        # Кнопки
+        self.toolButton_select_work_dir.clicked.connect(
+            partial(self.set_lineEdit_text_from_button, self.lineEdit_work_dir, "Выберите рабочую папку:"))
+        self.pushButton_open_xgtf_files.clicked.connect(self.open_xgtf_files)
+        self.pushButton_load_next_objects.clicked.connect(
+            self.continue_ejecting_objects)
+        self.pushButton_save_results.clicked.connect(self.save_results)
+        self.spinBox_ejectedObjects_in_row.valueChanged.connect(
+            self.spinBox_valueChanged)
+        pass
+
+    def spinBox_valueChanged(self, value):
+        self.EJECTED_OBJECTS_IN_ROW = value
+        self.updateGridLayout(sorted=False, just_update=True)
+        self.updateGridLayout(sorted=True, just_update=True)
+        pass
 
     def creating_widgets(self):
         self.sorted_table = TableObjects(self.groupBox, True)
@@ -128,33 +150,14 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.deleteCombinedObject(EjectedObjectDataFileNameAndObjectID(
             object_data[0].file_name, object_data[0].object_id))
         for object in object_data:
-            self.create_new_sorted_object({
-                'file_name': object.file_name,
-                'object_id': object.object_id,
-                'uuid': object.uuid,
-                'images': object.images
-            })
+            object.changed = True
+            self.create_new_sorted_object(object)
 
         pass
 
     def mousePressEvent(self, a0: QMouseEvent = None) -> None:
         print('По главному окну было нажатие')
         return super().mousePressEvent(a0)
-
-    def setup_properties(self):
-        self.pushButton_load_next_objects.setVisible(False)
-        self.pushButton_save_results.setVisible(False)
-        pass
-
-    def setup_connections(self):
-        # Кнопки
-        self.toolButton_select_work_dir.clicked.connect(
-            partial(self.set_lineEdit_text_from_button, self.lineEdit_work_dir, "Выберите рабочую папку:"))
-        self.pushButton_open_xgtf_files.clicked.connect(self.open_xgtf_files)
-        self.pushButton_load_next_objects.clicked.connect(
-            self.continue_ejecting_objects)
-        self.pushButton_save_results.clicked.connect(self.save_results)
-        pass
 
     def save_results(self):
         self.disable_buttons()
@@ -271,8 +274,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         widget.deleteCombinedObject.connect(self.deleteCombinedObject)
         widget.split_objects.connect(self.split_objects)
         self.gridLayout_sorted_objects.addWidget(
-            widget, grid_count//self.EJECTED_OBJECTS_IN_ROW, grid_count % self.EJECTED_OBJECTS_IN_ROW,
-            Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
+            widget, grid_count//self.EJECTED_OBJECTS_IN_ROW, grid_count % self.EJECTED_OBJECTS_IN_ROW)
         for exist_widget in self.ejected_objects_widgets_list:
             if widget.self_object_data[0].uuid == exist_widget.self_object_data[0].uuid:
                 exist_widget.combine_objects(widget.self_object_data)
@@ -302,26 +304,26 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         widget.deleteCombinedObject.connect(self.deleteCombinedObject)
         widget.split_objects.connect(self.split_objects)
         self.gridLayout_not_sorted_objects.addWidget(
-            widget, grid_count//self.EJECTED_OBJECTS_IN_ROW, grid_count % self.EJECTED_OBJECTS_IN_ROW,
-            Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
+            widget, grid_count//self.EJECTED_OBJECTS_IN_ROW, grid_count % self.EJECTED_OBJECTS_IN_ROW)
         self.ejected_objects_widgets_list.append(widget)
         self.not_sorted_lock.release()
         pass
 
-    def updateGridLayout(self, position: typing.Tuple[int, int], sorted: bool):
+    def updateGridLayout(self, position: typing.Tuple[int, int] = (0, 0), sorted: bool = False, just_update: bool = False):
         gridLayout = self.gridLayout_sorted_objects if sorted else self.gridLayout_not_sorted_objects
         widget_index = position[0] * self.EJECTED_OBJECTS_IN_ROW + position[1]
-        widget = gridLayout.takeAt(widget_index).widget()
-        gridLayout.removeWidget(widget)
-        widget.deleteLater()
+        if not just_update:
+            widget = gridLayout.takeAt(widget_index).widget()
+            gridLayout.removeWidget(widget)
+            widget.deleteLater()
         for index in range(widget_index, gridLayout.count()):
             widget: EjectedObject = gridLayout.takeAt(widget_index).widget()
             gridLayout.removeWidget(widget)
             widget.self_object_data[0].position = (
                 index//self.EJECTED_OBJECTS_IN_ROW, index % self.EJECTED_OBJECTS_IN_ROW)
             gridLayout.addWidget(
-                widget, index//self.EJECTED_OBJECTS_IN_ROW, index % self.EJECTED_OBJECTS_IN_ROW,
-                Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
+                widget, index//self.EJECTED_OBJECTS_IN_ROW, index % self.EJECTED_OBJECTS_IN_ROW)
+            # Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
         pass
 
     def closeEvent(self, event: QCloseEvent):
@@ -482,11 +484,19 @@ class EjectedObject(QWidget, Ui_Form_Ejected_Object):
 
     def set_next_image(self):
         pixmap = QPixmap()
-        image_data = next(self.generator_for_images).getvalue()
-        photo = cv2.imdecode(np.frombuffer(image_data, np.uint8), -1)
-        pixmap.loadFromData(image_data)
-        pixmap = pixmap.scaled(100, 300)
+        self.image_data = next(self.generator_for_images).getvalue()
+        pixmap.loadFromData(self.image_data)
+        original_image_size = cv2.imdecode(
+            np.frombuffer(self.image_data, np.uint8), -1).shape
+        width_ratio = self.size().width() / original_image_size[0]
+        height_ratio = self.size().height() / original_image_size[1]
+        scale_ratio = min(width_ratio, height_ratio)
+        pixmap = pixmap.scaled(
+            int(original_image_size[0] * scale_ratio),
+            int(original_image_size[1] * scale_ratio),
+        )
         self.label_image.setPixmap(pixmap)
+        self.label_image.setAlignment(Qt.AlignmentFlag.AlignCenter)
         pass
 
     def get_image(self):
@@ -500,7 +510,6 @@ class EjectedObject(QWidget, Ui_Form_Ejected_Object):
             self.timer.start()
 
     def createUUID(self):
-        self.self_object_data[0].changed = True
         return uuid.uuid4().hex
 
     def split_objects_function(self, object_data: EjectedObjectData):
@@ -509,6 +518,22 @@ class EjectedObject(QWidget, Ui_Form_Ejected_Object):
         object_data.uuid = ""
         self.updateSelfObjectData()
         self.split_objects.emit(object_data)
+        pass
+
+    def resizeEvent(self, event: QResizeEvent = None) -> None:
+        pixmap = QPixmap()
+        pixmap.loadFromData(self.image_data)
+        original_image_size = cv2.imdecode(
+            np.frombuffer(self.image_data, np.uint8), -1).shape
+        width_ratio = event.size().width() / original_image_size[0]
+        height_ratio = event.size().height() / original_image_size[1]
+        scale_ratio = min(width_ratio, height_ratio)
+        pixmap = pixmap.scaled(
+            int(original_image_size[0] * scale_ratio),
+            int(original_image_size[1] * scale_ratio),
+        )
+        self.label_image.setPixmap(pixmap)
+        event.accept()
         pass
 
 
