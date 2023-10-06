@@ -5,7 +5,6 @@ import io
 import os
 import typing
 
-import debugpy
 
 
 # Константы
@@ -26,7 +25,6 @@ class Position:
 
 
 def eject_objects(path_to_xgtf_file: os.PathLike, callback_function: typing.Callable[[typing.Dict], None]) -> None:
-    debugpy.debug_this_thread()  # debug
     path_to_xgtf_file = Path(path_to_xgtf_file)
     xgtf = ET.parse(path_to_xgtf_file)
     sourcefile = xgtf.getroot().find(f"./{VIPER}data/{VIPER}sourcefile")

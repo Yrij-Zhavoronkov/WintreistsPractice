@@ -1,16 +1,13 @@
 import sys
-from PyQt6 import QtGui
 from PyQt6.QtWidgets import QApplication, QMainWindow, QFileDialog, QLineEdit, QWidget, QLabel, QPushButton, QDialog, QVBoxLayout, QGridLayout, QMessageBox
-from PyQt6.QtCore import QThread, QTimerEvent, pyqtSignal, Qt, QTimer, QEvent, QMimeData, QByteArray
-from PyQt6.QtGui import QPixmap, QCloseEvent, QMouseEvent, QEnterEvent, QDrag, QDragEnterEvent, QDropEvent, QResizeEvent
+from PyQt6.QtCore import QThread, pyqtSignal, Qt, QTimer, QEvent, QMimeData, QByteArray
+from PyQt6.QtGui import QPixmap, QCloseEvent, QMouseEvent, QEnterEvent, QDrag, QDragEnterEvent, QDropEvent
 from functools import partial
 import os
 import typing
 from pathlib import Path
-import time
 import io
 import cv2
-import copy
 import numpy as np
 from threading import Lock
 import pickle
@@ -130,10 +127,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # Константа количества объектов в ряду
         self.EJECTED_OBJECTS_IN_ROW = self.spinBox_ejectedObjects_in_row.value()
         # Debug
-        self.lineEdit_work_dir.setText(
-            r'C:\Users\smeta\source\repos\WintreistsPractice\xgtf_video')
-        self.pushButton_open_xgtf_files.setEnabled(True)
-        self.pushButton_open_xgtf_files.click()
+        # self.lineEdit_work_dir.setText(
+        #     r'C:\Users\smeta\source\repos\WintreistsPractice\xgtf_video')
+        # self.pushButton_open_xgtf_files.setEnabled(True)
+        # self.pushButton_open_xgtf_files.click()
 
     def setup_properties(self):
         self.hide_buttons()
