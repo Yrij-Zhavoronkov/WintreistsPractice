@@ -1,3 +1,10 @@
 xgtf_to_excel/result.xlsx
 xgtf_video/*
 venv/*
+.idea/misc.xml
+.idea/modules.xml
+.idea/vcs.xml
+.idea/WintreistsPractice.iml
+.idea/inspectionProfiles/profiles_settings.xml
+.idea/.gitignore
+result.xlsx
