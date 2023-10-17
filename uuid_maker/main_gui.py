@@ -1,4 +1,5 @@
 import sys
+from PyQt6 import QtGui
 from PyQt6.QtWidgets import QApplication, QMainWindow, QFileDialog, QLineEdit, QWidget, QLabel, QPushButton, QDialog, QVBoxLayout, QGridLayout, QMessageBox
 from PyQt6.QtCore import QThread, pyqtSignal, Qt, QTimer, QEvent, QMimeData, QByteArray
 from PyQt6.QtGui import QPixmap, QCloseEvent, QMouseEvent, QEnterEvent, QDrag, QDragEnterEvent, QDropEvent
@@ -67,6 +68,7 @@ UUID_LENGTH = 32
 class ThreadForEjectingObjects(QThread):
     callback_signal = pyqtSignal(dict)
     cached_use = pyqtSignal()
+    get_one_object = pyqtSignal()
 
     def __init__(self, path_to_xgtf_file: os.PathLike, parent=None, cached=False):
         super(QThread, self).__init__(parent)
@@ -77,6 +79,7 @@ class ThreadForEjectingObjects(QThread):
         self.bool_finished = False
         if self.cached:
             self.cached_use.connect(self.send_cached_data)
+            self.get_one_object.connect(self.send_one_object)
 
     def run(self):
         eject_objects(self.path_to_xgtf_file, self.callback_function)
@@ -102,6 +105,13 @@ class ThreadForEjectingObjects(QThread):
             self.cached_function(data)
         else:
             self.callback_signal.emit(data)
+    
+    def send_one_object(self):
+        self.callback_signal.emit(self.cached_data.pop(0))
+        if len(self.cached_data) == 0 and self.bool_finished:
+            self.all_done = True
+            self.finished.emit()
+
 
 
 class MainWindow(QMainWindow, Ui_MainWindow):
@@ -180,10 +190,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.create_new_sorted_object(object)
 
         pass
-
-    def mousePressEvent(self, a0: QMouseEvent = None) -> None:
-        print('По главному окну было нажатие')
-        return super().mousePressEvent(a0)
 
     def save_results(self):
         self.disable_buttons()
@@ -292,9 +298,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             except StopIteration:
                 self.next_xgtf_file_name = None
                 self.pushButton_load_next_objects.setEnabled(False)
-            self.enable_buttons()
-            self.show_buttons()
-            self.activateWindow()
+        self.enable_buttons()
+        self.show_buttons()
+        self.activateWindow()
         pass
 
     def show_buttons(self):
@@ -369,6 +375,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             widget = gridLayout.takeAt(widget_index).widget()
             gridLayout.removeWidget(widget)
             widget.deleteLater()
+        while not sorted and gridLayout.count() < self.EJECTED_OBJECTS_IN_ROW*2:
+            self.thread_ejecting_object.get_one_object.emit()
         for index in range(widget_index, gridLayout.count()):
             widget: EjectedObject = gridLayout.takeAt(widget_index).widget()
             gridLayout.removeWidget(widget)
@@ -535,6 +543,9 @@ class EjectedObject(QWidget, Ui_Form_Ejected_Object):
         dialog.split_objects.connect(self.split_objects_function)
         dialog.exec()
         pass
+    
+    def mousePressEvent(self, event: QMouseEvent = None) -> None:
+        self.set_next_image()
 
     def set_next_image(self):
         self.image_data = next(self.generator_for_images).getvalue()

@@ -32,14 +32,15 @@ def eject_objects(path_to_xgtf_file: os.PathLike, callback_function: typing.Call
     path_to_video_file = path_to_xgtf_file.parent.joinpath(file_name)
     video = cv2.VideoCapture(str(path_to_video_file))
 
-    for xgtf_object in sourcefile.findall(f"./{VIPER}object"):
+    for xgtf_object in sourcefile.findall(f"./{VIPER}object[@name='Object']"):
         objects_frame_position = {}
         object_id = int(xgtf_object.attrib['id'])
+        uuid = xgtf_object.find(f'./{VIPER}attribute[@name="UniqueId"]/').attrib['value'] if xgtf_object.find(f'./{VIPER}attribute[@name="UniqueId"]/') is not None else "0"
         objects_images = {
             "file_name": file_name,
             "object_id": object_id,
             "images": [],
-            'uuid': xgtf_object.find(f'./{VIPER}attribute[@name="UniqueId"]/').attrib['value']
+            'uuid': uuid
         }
 
         max_width, max_height = 0, 0
@@ -129,8 +130,15 @@ def make_change_uuid(path_to_xgtf_file: os.PathLike, data: typing.List[typing.Di
     for object_data in data:
         object = sourcefile.find(
             f"./{VIPER}object[@id='{object_data['object_id']}']")
-        object.find(
-            f"./{VIPER}attribute[@name='UniqueId']/").attrib['value'] = object_data['uuid']
+        if object.find(f"./{VIPER}attribute[@name='UniqueId']/") is not None:
+            object.find(f"./{VIPER}attribute[@name='UniqueId']/").attrib['value'] = object_data['uuid']
+        else:
+            uuid = ET.Element(f"{VIPER}attribute")
+            uuid.set("name", "UniqueId")
+            value = ET.Element(f"{VIPER}svalue")
+            value.set("value", object_data['uuid'])
+            uuid.append(value)
+            object.append(uuid)
     xgtf.write(str(path_to_xgtf_file), encoding="UTF-8", xml_declaration=True)
 
 
