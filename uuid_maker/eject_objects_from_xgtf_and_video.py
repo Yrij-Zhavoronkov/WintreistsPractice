@@ -133,13 +133,18 @@ def make_change_uuid(path_to_xgtf_file: os.PathLike, data: typing.List[typing.Di
         if object.find(f"./{VIPER}attribute[@name='UniqueId']/") is not None:
             object.find(f"./{VIPER}attribute[@name='UniqueId']/").attrib['value'] = object_data['uuid']
         else:
+            pos_attr = object.find(f"./{VIPER}attribute[@name='Position']")
+            diff_attr = object.find(f"./{VIPER}attribute[@name='Difficult']")
             uuid = ET.Element(f"{VIPER}attribute")
             uuid.set("name", "UniqueId")
-            value = ET.Element(f"{VIPER}svalue")
+            uuid.tail, uuid.text = pos_attr.tail, pos_attr.text
+            pos_attr.tail, pos_attr.text = diff_attr.tail, diff_attr.text
+            object.append(uuid)
+            value = ET.Element(f"{VIPERDATA}svalue")
+            value.tail = uuid.text.replace("    ", "", 1)
             value.set("value", object_data['uuid'])
             uuid.append(value)
-            object.append(uuid)
-    xgtf.write(str(path_to_xgtf_file), encoding="UTF-8", xml_declaration=True)
+    xgtf.write(str(path_to_xgtf_file), encoding="UTF-8", xml_declaration=True, method='xml')
 
 
 if __name__ == '__main__':

@@ -137,10 +137,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # Константа количества объектов в ряду
         self.EJECTED_OBJECTS_IN_ROW = self.spinBox_ejectedObjects_in_row.value()
         # Debug
-        # self.lineEdit_work_dir.setText(
-        #     r'C:\Users\smeta\source\repos\WintreistsPractice\xgtf_video')
-        # self.pushButton_open_xgtf_files.setEnabled(True)
-        # self.pushButton_open_xgtf_files.click()
+        self.lineEdit_work_dir.setText(
+            r'C:\Users\smeta\source\repos\WintreistsPractice\xgtf_video')
+        self.pushButton_open_xgtf_files.setEnabled(True)
+        self.pushButton_open_xgtf_files.click()
 
     def setup_properties(self):
         self.hide_buttons()
@@ -442,6 +442,8 @@ class EjectedObject(QWidget, Ui_Form_Ejected_Object):
             image for object in self.self_object_data for image in object.images]
         if len(self.self_object_data[0].uuid) != UUID_LENGTH:
             self.self_object_data[0].uuid = self.createUUID()
+            if self.self_object_data[0].sorted:
+                self.self_object_data[0].changed = True
 
         self.mouse_in_widget = False
         self.generator_for_images = self.get_image()
