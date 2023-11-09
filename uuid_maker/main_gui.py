@@ -1,7 +1,7 @@
 import sys
 from PyQt6 import QtGui
 from PyQt6.QtWidgets import QApplication, QMainWindow, QFileDialog, QLineEdit, QWidget, QLabel, QPushButton, QDialog, QVBoxLayout, QGridLayout, QMessageBox
-from PyQt6.QtCore import QThread, pyqtSignal, Qt, QTimer, QEvent, QMimeData, QByteArray
+from PyQt6.QtCore import QThread, pyqtSignal, Qt, QTimer, QEvent, QMimeData, QByteArray, QResource
 from PyQt6.QtGui import QPixmap, QCloseEvent, QMouseEvent, QEnterEvent, QDrag, QDragEnterEvent, QDropEvent
 from functools import partial
 import os
@@ -21,7 +21,7 @@ from combining_two_objects_to_one import Ui_combining_objects
 from eject_objects_from_xgtf_and_video import eject_objects, make_change_uuid
 from table_objects import Ui_Form_table_objects
 from openEjectedObject import Ui_Form_open_ejected_object
-
+import resources_file
 # Константы
 
 
@@ -77,12 +77,14 @@ class ThreadForEjectingObjects(QThread):
         self.cached_data = []
         self.all_done = False
         self.bool_finished = False
+        self.need_to_quit = False
         if self.cached:
             self.cached_use.connect(self.send_cached_data)
             self.get_one_object.connect(self.send_one_object)
 
     def run(self):
-        eject_objects(self.path_to_xgtf_file, self.callback_function)
+
+        eject_objects(self.path_to_xgtf_file, self.callback_function, self.check_work)
         if not self.cached:
             self.all_done = True
         self.bool_finished = True
@@ -101,16 +103,25 @@ class ThreadForEjectingObjects(QThread):
             self.cached = False
 
     def callback_function(self, data: dict):
-        if self.cached:
-            self.cached_function(data)
-        else:
-            self.callback_signal.emit(data)
+        print(sys.getrefcount(self), self.need_to_quit)
+        if not self.need_to_quit:
+            if self.cached:
+                self.cached_function(data)
+            else:
+                self.callback_signal.emit(data)
+
+    def check_work(self) -> bool:
+        return self.need_to_quit
     
     def send_one_object(self):
         self.callback_signal.emit(self.cached_data.pop(0))
         if len(self.cached_data) == 0 and self.bool_finished:
             self.all_done = True
             self.finished.emit()
+    
+    def quit(self) -> None:
+        self.need_to_quit = True
+        return super().quit()
 
 
 
@@ -137,10 +148,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # Константа количества объектов в ряду
         self.EJECTED_OBJECTS_IN_ROW = self.spinBox_ejectedObjects_in_row.value()
         # Debug
-        self.lineEdit_work_dir.setText(
-            r'C:\Users\smeta\source\repos\WintreistsPractice\xgtf_video')
-        self.pushButton_open_xgtf_files.setEnabled(True)
-        self.pushButton_open_xgtf_files.click()
+        self.work_dir = r'C:\Users\smeta\source\repos\WintreistsPractice\xgtf_video'
+        self.open_xgtf_files()
 
     def setup_properties(self):
         self.hide_buttons()
@@ -149,9 +158,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     def setup_connections(self):
         # Кнопки
-        self.toolButton_select_work_dir.clicked.connect(
-            partial(self.set_lineEdit_text_from_button, self.lineEdit_work_dir, "Выберите рабочую папку:"))
-        self.pushButton_open_xgtf_files.clicked.connect(self.open_xgtf_files)
+        self.pushButton_open_xgtf_files_and_load.clicked.connect(
+            partial(
+                self.open_work_folder, "Выберите рабочую папку:"
+            )
+        )
         self.pushButton_load_next_objects.clicked.connect(
             self.continue_ejecting_objects)
         self.pushButton_save_results.clicked.connect(self.save_results)
@@ -208,7 +219,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                             'uuid': object.uuid
                         }]
         for file_name in save_data:
-            path_to_xgtf_file = Path(self.lineEdit_work_dir.text()).joinpath(
+            path_to_xgtf_file = Path(self.work_dir).joinpath(
                 file_name.rpartition(".")[0]+".xgtf")
             make_change_uuid(
                 path_to_xgtf_file, save_data[file_name])
@@ -232,7 +243,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.disable_buttons()
         self.hide_buttons()
         self.ejected_objects_widgets_list.clear()
-        # Добавить код удаления всех объектов
         if self.gridLayout_not_sorted_objects.count():
             self.thread_ejecting_object.quit()
         if self.gridLayout_sorted_objects.count():
@@ -241,7 +251,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             item = self.gridLayout_not_sorted_objects.takeAt(0)
             widget = item.widget()
             if widget is not None:
-                widget.deleteLater()
+                widget.close()
         while self.gridLayout_sorted_objects.count():
             item = self.gridLayout_sorted_objects.takeAt(0)
             widget = item.widget()
@@ -285,22 +295,23 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.enable_buttons()
 
     def on_finish_thread(self):
-        if self.next_xgtf_file_name is not None and self.thread_ejecting_object.all_done:
-            try:
-                self.next_xgtf_file_name = next(self.xgtf_file_name_generator)
-                self.thread_ejecting_object = ThreadForEjectingObjects(
-                    self.next_xgtf_file_name, cached=True)
-                self.thread_ejecting_object.callback_signal.connect(
-                    self.create_new_not_sorted_object)
-                self.thread_ejecting_object.finished.connect(
-                    self.on_finish_thread)
-                self.thread_ejecting_object.start()
-            except StopIteration:
-                self.next_xgtf_file_name = None
-                self.pushButton_load_next_objects.setEnabled(False)
-        self.enable_buttons()
-        self.show_buttons()
-        self.activateWindow()
+        if not self.thread_for_ejecting_sorted_objects.need_to_quit:
+            if self.next_xgtf_file_name is not None and self.thread_ejecting_object.all_done:
+                try:
+                    self.next_xgtf_file_name = next(self.xgtf_file_name_generator)
+                    self.thread_ejecting_object = ThreadForEjectingObjects(
+                        self.next_xgtf_file_name, cached=True)
+                    self.thread_ejecting_object.callback_signal.connect(
+                        self.create_new_not_sorted_object)
+                    self.thread_ejecting_object.finished.connect(
+                        self.on_finish_thread)
+                    self.thread_ejecting_object.start()
+                except StopIteration:
+                    self.next_xgtf_file_name = None
+                    self.pushButton_load_next_objects.setEnabled(False)
+            self.enable_buttons()
+            self.show_buttons()
+            self.activateWindow()
         pass
 
     def show_buttons(self):
@@ -314,12 +325,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def enable_buttons(self):
         if self.next_xgtf_file_name is not None:
             self.pushButton_load_next_objects.setEnabled(True)
-        self.pushButton_open_xgtf_files.setEnabled(True)
         self.pushButton_save_results.setEnabled(True)
 
     def disable_buttons(self):
         self.pushButton_load_next_objects.setEnabled(False)
-        self.pushButton_open_xgtf_files.setEnabled(False)
         self.pushButton_save_results.setEnabled(False)
 
     def create_new_sorted_object(self, object_data: typing.Union[typing.Dict, EjectedObjectData]):
@@ -388,23 +397,24 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         pass
 
     def closeEvent(self, event: QCloseEvent):
-        self.thread_for_ejecting_sorted_objects.quit()
-        self.thread_ejecting_object.quit()
+        try:
+            self.thread_for_ejecting_sorted_objects.quit()
+            self.thread_ejecting_object.quit()
+        except:
+            pass
         event.accept()
 
     def get_xgtf_file_name(self):
-        work_dir = Path(self.lineEdit_work_dir.text())
+        work_dir = Path(self.work_dir)
         for files in work_dir.glob("*.xgtf"):
             yield files
 
-    def set_lineEdit_text_from_button(self, lineEdit: QLineEdit, caption: str):
-        directory = self.open_explorer_folder(caption)
+    def open_work_folder(self, caption):
+        directory = QFileDialog.getExistingDirectory(self, caption, os.getcwd())
         if directory:
-            self.pushButton_open_xgtf_files.setEnabled(True)
-            lineEdit.setText(directory)
+            self.work_dir = directory
+            self.open_xgtf_files()
 
-    def open_explorer_folder(self, caption):
-        return QFileDialog.getExistingDirectory(self, caption, os.getcwd())
 
 
 class EjectedObject(QWidget, Ui_Form_Ejected_Object):

@@ -24,7 +24,7 @@ class Position:
 #
 
 
-def eject_objects(path_to_xgtf_file: os.PathLike, callback_function: typing.Callable[[typing.Dict], None]) -> None:
+def eject_objects(path_to_xgtf_file: os.PathLike, callback_function: typing.Callable[[typing.Dict], None], check_work:typing.Callable[[], bool]) -> None: 
     path_to_xgtf_file = Path(path_to_xgtf_file)
     xgtf = ET.parse(path_to_xgtf_file)
     sourcefile = xgtf.getroot().find(f"./{VIPER}data/{VIPER}sourcefile")
@@ -33,6 +33,8 @@ def eject_objects(path_to_xgtf_file: os.PathLike, callback_function: typing.Call
     video = cv2.VideoCapture(str(path_to_video_file))
 
     for xgtf_object in sourcefile.findall(f"./{VIPER}object[@name='Object']"):
+        if check_work():
+            break
         objects_frame_position = {}
         object_id = int(xgtf_object.attrib['id'])
         uuid = xgtf_object.find(f'./{VIPER}attribute[@name="UniqueId"]/').attrib['value'] if xgtf_object.find(f'./{VIPER}attribute[@name="UniqueId"]/') is not None else "0"
