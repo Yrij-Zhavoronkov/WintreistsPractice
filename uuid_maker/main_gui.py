@@ -22,6 +22,9 @@ from eject_objects_from_xgtf_and_video import eject_objects, make_change_uuid
 from table_objects import Ui_Form_table_objects
 from openEjectedObject import Ui_Form_open_ejected_object
 import resources_file
+from datetime import datetime
+import debugpy
+
 # Константы
 
 
@@ -83,8 +86,13 @@ class ThreadForEjectingObjects(QThread):
             self.get_one_object.connect(self.send_one_object)
 
     def run(self):
-
-        eject_objects(self.path_to_xgtf_file, self.callback_function, self.check_work)
+        # debugpy.debug_this_thread()
+        generator = eject_objects(self.path_to_xgtf_file)
+        while not self.need_to_quit:
+            try:
+                self.callback_function(next(generator))
+            except StopIteration:
+                break
         if not self.cached:
             self.all_done = True
         self.bool_finished = True
@@ -103,7 +111,9 @@ class ThreadForEjectingObjects(QThread):
             self.cached = False
 
     def callback_function(self, data: dict):
-        print(sys.getrefcount(self), self.need_to_quit)
+        # print(sys.getrefcount(self), self.need_to_quit)
+        if self.need_to_quit:
+            debugpy.debug_this_thread()
         if not self.need_to_quit:
             if self.cached:
                 self.cached_function(data)
@@ -120,6 +130,7 @@ class ThreadForEjectingObjects(QThread):
             self.finished.emit()
     
     def quit(self) -> None:
+        # debugpy.debug_this_thread()
         self.need_to_quit = True
         return super().quit()
 
@@ -242,11 +253,23 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def open_xgtf_files(self):
         self.disable_buttons()
         self.hide_buttons()
+        for widget in self.ejected_objects_widgets_list:
+            widget.close()
         self.ejected_objects_widgets_list.clear()
         if self.gridLayout_not_sorted_objects.count():
             self.thread_ejecting_object.quit()
+            self.thread_ejecting_object.wait()
+            while self.sorted_lock.locked():
+                pass
+            self.thread_ejecting_object.terminate()
+            del self.thread_ejecting_object
         if self.gridLayout_sorted_objects.count():
             self.thread_for_ejecting_sorted_objects.quit()
+            self.thread_for_ejecting_sorted_objects.wait()
+            while self.not_sorted_lock.locked():
+                pass
+            self.thread_for_ejecting_sorted_objects.terminate()
+            del self.thread_for_ejecting_sorted_objects
         while self.gridLayout_not_sorted_objects.count():
             item = self.gridLayout_not_sorted_objects.takeAt(0)
             widget = item.widget()

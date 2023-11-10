@@ -24,7 +24,7 @@ class Position:
 #
 
 
-def eject_objects(path_to_xgtf_file: os.PathLike, callback_function: typing.Callable[[typing.Dict], None], check_work:typing.Callable[[], bool]) -> None: 
+def eject_objects(path_to_xgtf_file: os.PathLike) -> typing.Dict: 
     path_to_xgtf_file = Path(path_to_xgtf_file)
     xgtf = ET.parse(path_to_xgtf_file)
     sourcefile = xgtf.getroot().find(f"./{VIPER}data/{VIPER}sourcefile")
@@ -33,8 +33,6 @@ def eject_objects(path_to_xgtf_file: os.PathLike, callback_function: typing.Call
     video = cv2.VideoCapture(str(path_to_video_file))
 
     for xgtf_object in sourcefile.findall(f"./{VIPER}object[@name='Object']"):
-        if check_work():
-            break
         objects_frame_position = {}
         object_id = int(xgtf_object.attrib['id'])
         uuid = xgtf_object.find(f'./{VIPER}attribute[@name="UniqueId"]/').attrib['value'] if xgtf_object.find(f'./{VIPER}attribute[@name="UniqueId"]/') is not None else "0"
@@ -121,7 +119,7 @@ def eject_objects(path_to_xgtf_file: os.PathLike, callback_function: typing.Call
                 _, buffer = cv2.imencode('.jpg', object_border)
                 io_buffer = io.BytesIO(buffer)
                 objects_images["images"].append(io_buffer)
-        callback_function(objects_images)
+        yield objects_images
     video.release()
 
 
@@ -149,7 +147,3 @@ def make_change_uuid(path_to_xgtf_file: os.PathLike, data: typing.List[typing.Di
     xgtf.write(str(path_to_xgtf_file), encoding="UTF-8", xml_declaration=True, method='xml')
 
 
-if __name__ == '__main__':
-    eject_objects(
-        r"C:\Users\smeta\source\repos\WintreistsPractice\xgtf_video\59.Gl.korpus_vhod_Holl_č.2_Glav.Korp.-_Kam_3_2017-02-10_09-59-09_713__2h10m28s__00s_10m.xgtf",
-        lambda x: print(x))
