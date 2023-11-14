@@ -274,8 +274,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.ejected_objects_widgets_list.clear()
         if self.thread_for_ejecting_sorted_objects is not None:
             self.thread_for_ejecting_sorted_objects.interinput()
+            self.thread_for_ejecting_sorted_objects.join()
         if self.thread_ejecting_object is not None:
             self.thread_ejecting_object.interinput()
+            self.thread_ejecting_object.join()
         while self.gridLayout_not_sorted_objects.count():
             item = self.gridLayout_not_sorted_objects.takeAt(0)
             widget = item.widget()
