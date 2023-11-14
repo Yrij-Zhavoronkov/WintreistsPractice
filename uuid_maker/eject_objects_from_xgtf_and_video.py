@@ -24,7 +24,7 @@ class Position:
 #
 
 
-def eject_objects(path_to_xgtf_file: os.PathLike) -> typing.Dict: 
+def eject_objects(path_to_xgtf_file: os.PathLike) -> typing.Dict:
     path_to_xgtf_file = Path(path_to_xgtf_file)
     xgtf = ET.parse(path_to_xgtf_file)
     sourcefile = xgtf.getroot().find(f"./{VIPER}data/{VIPER}sourcefile")

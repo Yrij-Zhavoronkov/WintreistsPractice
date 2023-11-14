@@ -1,7 +1,7 @@
 import sys
 from PyQt6 import QtGui
 from PyQt6.QtWidgets import QApplication, QMainWindow, QFileDialog, QLineEdit, QWidget, QLabel, QPushButton, QDialog, QVBoxLayout, QGridLayout, QMessageBox
-from PyQt6.QtCore import QThread, pyqtSignal, Qt, QTimer, QEvent, QMimeData, QByteArray, QResource
+from PyQt6.QtCore import pyqtSignal, Qt, QTimer, QEvent, QMimeData, QByteArray, QMetaObject, Q_ARG, QCoreApplication, pyqtSlot
 from PyQt6.QtGui import QPixmap, QCloseEvent, QMouseEvent, QEnterEvent, QDrag, QDragEnterEvent, QDropEvent
 from functools import partial
 import os
@@ -21,10 +21,9 @@ from combining_two_objects_to_one import Ui_combining_objects
 from eject_objects_from_xgtf_and_video import eject_objects, make_change_uuid
 from table_objects import Ui_Form_table_objects
 from openEjectedObject import Ui_Form_open_ejected_object
+from threading import Thread
+import time
 import resources_file
-from datetime import datetime
-import debugpy
-
 # Константы
 
 
@@ -67,74 +66,89 @@ TYPE_EJECTED_OBJECT = typing.List[EjectedObjectData]
 UUID_LENGTH = 32
 #
 
-
-class ThreadForEjectingObjects(QThread):
-    callback_signal = pyqtSignal(dict)
-    cached_use = pyqtSignal()
-    get_one_object = pyqtSignal()
-
-    def __init__(self, path_to_xgtf_file: os.PathLike, parent=None, cached=False):
-        super(QThread, self).__init__(parent)
-        self.path_to_xgtf_file = path_to_xgtf_file
-        self.cached = cached
+class ThreadForEjectingObjects(Thread):
+    def __init__(
+            self, 
+            xgtf_files: typing.List[os.PathLike],
+            callback_function: typing.Optional[typing.Callable[[dict], None]],
+            on_finish_callback: typing.Optional[typing.Callable[[], None]] = None,
+            parent = None,
+        ):
+        super().__init__()
+        self.xgtf_files = xgtf_files
+        self.callback_function = callback_function
+        self.on_finish_callback = on_finish_callback
+        self.parent = parent
+        self.stop_work = False
+        self.working = False
+        self.sorted = False
+        self.end_files = False
+        self.continue_work = True
+        self.caching_data = False
         self.cached_data = []
-        self.all_done = False
-        self.bool_finished = False
-        self.need_to_quit = False
-        if self.cached:
-            self.cached_use.connect(self.send_cached_data)
-            self.get_one_object.connect(self.send_one_object)
-
-    def run(self):
-        # debugpy.debug_this_thread()
-        generator = eject_objects(self.path_to_xgtf_file)
-        while not self.need_to_quit:
-            try:
-                self.callback_function(next(generator))
-            except StopIteration:
-                break
-        if not self.cached:
-            self.all_done = True
-        self.bool_finished = True
+        self.pause_work = False
         pass
 
-    def cached_function(self, data: dict):
-        self.cached_data.append(data)
+    def run(self) -> None:
+        while True:
+            if self.stop_work: 
+                return
+            if len(self.xgtf_files) == 0:
+                self.end_files = True
+                return
+            if not self.caching_data and not self.continue_work:
+                time.sleep(1)
+                continue
+            
+            self.working = True
+            xgtf_file = self.xgtf_files.pop(0)
+            for data in eject_objects(xgtf_file):
+                if self.stop_work: 
+                    return # Выход из thread
+                while self.pause_work: 
+                    time.sleep(0.1) # Приостановка работы
 
-    def send_cached_data(self):
-        for data in self.cached_data:
-            self.callback_signal.emit(data)
-        self.callback_function = self.callback_signal.emit
-        if self.bool_finished:
-            self.all_done = True
-        else:
-            self.cached = False
-
-    def callback_function(self, data: dict):
-        # print(sys.getrefcount(self), self.need_to_quit)
-        if self.need_to_quit:
-            debugpy.debug_this_thread()
-        if not self.need_to_quit:
-            if self.cached:
-                self.cached_function(data)
+                if not self.caching_data or self.continue_work:
+                    self.send_data(data)
+                else:
+                    self.cached_data.append(data)
+            self.working = False
+            if self.continue_work and self.on_finish_callback is not None:
+                self.on_finish_callback()
+            if self.continue_work:
+                self.continue_work = False
+                self.caching_data = True
             else:
-                self.callback_signal.emit(data)
+                if self.caching_data:
+                    self.caching_data = False
 
-    def check_work(self) -> bool:
-        return self.need_to_quit
-    
-    def send_one_object(self):
-        self.callback_signal.emit(self.cached_data.pop(0))
-        if len(self.cached_data) == 0 and self.bool_finished:
-            self.all_done = True
-            self.finished.emit()
-    
-    def quit(self) -> None:
-        # debugpy.debug_this_thread()
-        self.need_to_quit = True
-        return super().quit()
+    def interinput(self):
+        self.stop_work = True
 
+    def notify(self):
+        self.pause_work = True
+        for data in self.cached_data:
+            self.send_data(data)
+        self.cached_data.clear()
+        self.continue_work, self.caching_data = (True, False) if self.working else (False, True)
+        self.pause_work = False
 
+    def send_one_data(self):
+        if len(self.cached_data) > 0:
+            self.send_data(self.cached_data.pop(0), in_some_thread = True)
+
+    def send_data(self, data, in_some_thread = False):
+        if not in_some_thread:
+            QMetaObject.invokeMethod(
+                self.parent,
+                "create_new_sorted_object" if self.sorted else "create_new_not_sorted_object",
+                Qt.ConnectionType.QueuedConnection,
+                Q_ARG(dict, data),
+                Q_ARG(object, self.parent),
+            )
+        else:
+            self.callback_function(data)
+        
 
 class MainWindow(QMainWindow, Ui_MainWindow):
     def __init__(self):
@@ -163,7 +177,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.open_xgtf_files()
 
     def setup_properties(self):
-        self.hide_buttons()
         self.spinBox_ejectedObjects_in_row.setValue(3)
         pass
 
@@ -197,6 +210,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.not_sorted_table = TableObjects(self.groupBox_2, False)
         self.groupBox_2.layout().addWidget(self.not_sorted_table)
         self.gridLayout_not_sorted_objects = self.not_sorted_table.gridLayout
+
+        self.thread_for_ejecting_sorted_objects = None
+        self.thread_ejecting_object = None
         pass
 
     def split_objects(self, object_data: EjectedObjectData):
@@ -251,89 +267,54 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         pass
 
     def open_xgtf_files(self):
+        self.show_buttons()
         self.disable_buttons()
-        self.hide_buttons()
         for widget in self.ejected_objects_widgets_list:
-            widget.close()
+            widget.deleteLater()
         self.ejected_objects_widgets_list.clear()
-        if self.gridLayout_not_sorted_objects.count():
-            self.thread_ejecting_object.quit()
-            self.thread_ejecting_object.wait()
-            while self.sorted_lock.locked():
-                pass
-            self.thread_ejecting_object.terminate()
-            del self.thread_ejecting_object
-        if self.gridLayout_sorted_objects.count():
-            self.thread_for_ejecting_sorted_objects.quit()
-            self.thread_for_ejecting_sorted_objects.wait()
-            while self.not_sorted_lock.locked():
-                pass
-            self.thread_for_ejecting_sorted_objects.terminate()
-            del self.thread_for_ejecting_sorted_objects
+        if self.thread_for_ejecting_sorted_objects is not None:
+            self.thread_for_ejecting_sorted_objects.interinput()
+        if self.thread_ejecting_object is not None:
+            self.thread_ejecting_object.interinput()
         while self.gridLayout_not_sorted_objects.count():
             item = self.gridLayout_not_sorted_objects.takeAt(0)
             widget = item.widget()
             if widget is not None:
-                widget.close()
+                widget.deleteLater()
         while self.gridLayout_sorted_objects.count():
             item = self.gridLayout_sorted_objects.takeAt(0)
             widget = item.widget()
             if widget is not None:
-                widget.close()
+                widget.deleteLater()
         #
 
-        self.xgtf_file_name_generator = self.get_xgtf_file_name()
-        try:
-            self.thread_for_ejecting_sorted_objects = ThreadForEjectingObjects(
-                next(self.xgtf_file_name_generator))
-            self.thread_for_ejecting_sorted_objects.callback_signal.connect(
-                self.create_new_sorted_object)
-            self.thread_for_ejecting_sorted_objects.start()
-            self.thread_ejecting_object = ThreadForEjectingObjects(
-                next(self.xgtf_file_name_generator))
-            self.thread_ejecting_object.callback_signal.connect(
-                self.create_new_not_sorted_object)
-            self.thread_ejecting_object.finished.connect(self.on_finish_thread)
-            self.thread_ejecting_object.start()
-            self.next_xgtf_file_name = next(self.xgtf_file_name_generator)
-        except StopIteration:
-            self.next_xgtf_file_name = None
+        self.xgtf_file_names = self.get_xgtf_file_name()
+        self.thread_for_ejecting_sorted_objects = ThreadForEjectingObjects(
+            xgtf_files=[self.xgtf_file_names.pop(0)],
+            callback_function=self.create_new_sorted_object,
+            parent=self,
+        )
+        self.thread_for_ejecting_sorted_objects.sorted = True
+        self.thread_ejecting_object = ThreadForEjectingObjects(
+            xgtf_files=self.xgtf_file_names,
+            callback_function=self.create_new_not_sorted_object,
+            on_finish_callback=self.on_finish_thread,
+            parent=self,
+        )
+        self.thread_for_ejecting_sorted_objects.start()
+        self.thread_ejecting_object.start()
         pass
 
     def continue_ejecting_objects(self):
-        self.disable_buttons()
-        self.thread_ejecting_object.cached_use.emit()
-        if self.thread_ejecting_object.all_done:
-            try:
-                self.next_xgtf_file_name = next(self.xgtf_file_name_generator)
-                self.thread_ejecting_object = ThreadForEjectingObjects(
-                    self.next_xgtf_file_name, cached=True)
-                self.thread_ejecting_object.callback_signal.connect(
-                    self.create_new_not_sorted_object)
-                self.thread_ejecting_object.finished.connect(
-                    self.on_finish_thread)
-                self.thread_ejecting_object.start()
-            except StopIteration:
-                self.next_xgtf_file_name = None
-            self.enable_buttons()
+        if self.thread_ejecting_object.working:
+            self.disable_buttons()
+        self.thread_ejecting_object.notify()
 
     def on_finish_thread(self):
-        if not self.thread_for_ejecting_sorted_objects.need_to_quit:
-            if self.next_xgtf_file_name is not None and self.thread_ejecting_object.all_done:
-                try:
-                    self.next_xgtf_file_name = next(self.xgtf_file_name_generator)
-                    self.thread_ejecting_object = ThreadForEjectingObjects(
-                        self.next_xgtf_file_name, cached=True)
-                    self.thread_ejecting_object.callback_signal.connect(
-                        self.create_new_not_sorted_object)
-                    self.thread_ejecting_object.finished.connect(
-                        self.on_finish_thread)
-                    self.thread_ejecting_object.start()
-                except StopIteration:
-                    self.next_xgtf_file_name = None
-                    self.pushButton_load_next_objects.setEnabled(False)
+        if self.thread_ejecting_object.end_files:
+            self.pushButton_load_next_objects.setHidden(True)
+        if not self.thread_ejecting_object.stop_work:
             self.enable_buttons()
-            self.show_buttons()
             self.activateWindow()
         pass
 
@@ -341,24 +322,22 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.pushButton_load_next_objects.setVisible(True)
         self.pushButton_save_results.setVisible(True)
 
-    def hide_buttons(self):
-        self.pushButton_load_next_objects.setVisible(False)
-        self.pushButton_save_results.setVisible(False)
-
     def enable_buttons(self):
-        if self.next_xgtf_file_name is not None:
+        if not self.pushButton_load_next_objects.isHidden():
             self.pushButton_load_next_objects.setEnabled(True)
-        self.pushButton_save_results.setEnabled(True)
+        if not self.pushButton_save_results.isHidden():
+            self.pushButton_save_results.setEnabled(True)
 
     def disable_buttons(self):
         self.pushButton_load_next_objects.setEnabled(False)
         self.pushButton_save_results.setEnabled(False)
 
-    def create_new_sorted_object(self, object_data: typing.Union[typing.Dict, EjectedObjectData]):
+    @pyqtSlot(dict, object)
+    def create_new_sorted_object(self, object_data: typing.Union[typing.Dict, EjectedObjectData], parent=None):
         self.sorted_lock.acquire()
         grid_count = self.gridLayout_sorted_objects.count()
         widget = EjectedObject(
-            object_data, self, (grid_count//self.EJECTED_OBJECTS_IN_ROW, grid_count % self.EJECTED_OBJECTS_IN_ROW), sorted=True)
+            object_data, parent, (grid_count//self.EJECTED_OBJECTS_IN_ROW, grid_count % self.EJECTED_OBJECTS_IN_ROW), sorted=True)
         widget.updateGridLayout.connect(self.updateGridLayout)
         widget.deleteCombinedObject.connect(self.deleteCombinedObject)
         widget.split_objects.connect(self.split_objects)
@@ -374,7 +353,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.sorted_lock.release()
         pass
 
-    def create_new_not_sorted_object(self, object_data: typing.Union[typing.Dict, EjectedObjectData]):
+    @pyqtSlot(dict, object)
+    def create_new_not_sorted_object(self, object_data: typing.Union[typing.Dict, EjectedObjectData], parent=None):
         self.not_sorted_lock.acquire()
         grid_count = self.gridLayout_not_sorted_objects.count()
         if isinstance(object_data, dict):
@@ -383,7 +363,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 self.not_sorted_lock.release()
                 return None
         widget = EjectedObject(
-            object_data, self, (grid_count//self.EJECTED_OBJECTS_IN_ROW, grid_count % self.EJECTED_OBJECTS_IN_ROW), sorted=False)
+            object_data, parent, (grid_count//self.EJECTED_OBJECTS_IN_ROW, grid_count % self.EJECTED_OBJECTS_IN_ROW), sorted=False)
         for exist_widget in self.ejected_objects_widgets_list:
             if widget.self_object_data[0].uuid == exist_widget.self_object_data[0].uuid:
                 exist_widget.combine_objects(widget.self_object_data)
@@ -408,7 +388,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             gridLayout.removeWidget(widget)
             widget.deleteLater()
         while not sorted and gridLayout.count() < self.EJECTED_OBJECTS_IN_ROW*2:
-            self.thread_ejecting_object.get_one_object.emit()
+            self.thread_ejecting_object.send_one_data()
         for index in range(widget_index, gridLayout.count()):
             widget: EjectedObject = gridLayout.takeAt(widget_index).widget()
             gridLayout.removeWidget(widget)
@@ -420,24 +400,20 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         pass
 
     def closeEvent(self, event: QCloseEvent):
-        try:
-            self.thread_for_ejecting_sorted_objects.quit()
-            self.thread_ejecting_object.quit()
-        except:
-            pass
+        self.thread_for_ejecting_sorted_objects.interinput()
+        self.thread_ejecting_object.interinput()
+        self.thread_for_ejecting_sorted_objects.join()
+        self.thread_ejecting_object.join()
         event.accept()
 
-    def get_xgtf_file_name(self):
-        work_dir = Path(self.work_dir)
-        for files in work_dir.glob("*.xgtf"):
-            yield files
+    def get_xgtf_file_name(self) -> typing.List[str]:
+        return list(Path(self.work_dir).glob("*.xgtf"))
 
     def open_work_folder(self, caption):
         directory = QFileDialog.getExistingDirectory(self, caption, os.getcwd())
         if directory:
             self.work_dir = directory
             self.open_xgtf_files()
-
 
 
 class EjectedObject(QWidget, Ui_Form_Ejected_Object):
