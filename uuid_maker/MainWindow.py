@@ -1,4 +1,4 @@
-# Form implementation generated from reading ui file 'C:\Users\smeta\source\repos\Работа\computervision\DPE-3364\uuid_maker\MainWindow.ui'
+# Form implementation generated from reading ui file 'C:\Users\smeta\source\repos\WintreistsPractice\uuid_maker\MainWindow.ui'
 #
 # Created by: PyQt6 UI code generator 6.6.0
 #
@@ -19,23 +19,18 @@ class Ui_MainWindow(object):
         self.verticalLayout_5.setObjectName("verticalLayout_5")
         self.horizontalLayout = QtWidgets.QHBoxLayout()
         self.horizontalLayout.setObjectName("horizontalLayout")
-        self.label_4 = QtWidgets.QLabel(parent=self.centralwidget)
-        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Policy.Maximum, QtWidgets.QSizePolicy.Policy.Preferred)
-        sizePolicy.setHorizontalStretch(0)
-        sizePolicy.setVerticalStretch(0)
-        sizePolicy.setHeightForWidth(self.label_4.sizePolicy().hasHeightForWidth())
-        self.label_4.setSizePolicy(sizePolicy)
-        self.label_4.setObjectName("label_4")
-        self.horizontalLayout.addWidget(self.label_4)
         self.spinBox_ejectedObjects_in_row = QtWidgets.QSpinBox(parent=self.centralwidget)
         sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Policy.Maximum, QtWidgets.QSizePolicy.Policy.Fixed)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(self.spinBox_ejectedObjects_in_row.sizePolicy().hasHeightForWidth())
         self.spinBox_ejectedObjects_in_row.setSizePolicy(sizePolicy)
+        self.spinBox_ejectedObjects_in_row.setAutoFillBackground(True)
+        self.spinBox_ejectedObjects_in_row.setFrame(False)
+        self.spinBox_ejectedObjects_in_row.setButtonSymbols(QtWidgets.QAbstractSpinBox.ButtonSymbols.UpDownArrows)
         self.spinBox_ejectedObjects_in_row.setMinimum(1)
         self.spinBox_ejectedObjects_in_row.setMaximum(10)
-        self.spinBox_ejectedObjects_in_row.setProperty("value", 4)
+        self.spinBox_ejectedObjects_in_row.setProperty("value", 3)
         self.spinBox_ejectedObjects_in_row.setObjectName("spinBox_ejectedObjects_in_row")
         self.horizontalLayout.addWidget(self.spinBox_ejectedObjects_in_row)
         self.pushButton_open_xgtf_files_and_load = QtWidgets.QPushButton(parent=self.centralwidget)
@@ -111,7 +106,7 @@ class Ui_MainWindow(object):
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
         MainWindow.setWindowTitle(_translate("MainWindow", "MainWindow"))
-        self.label_4.setText(_translate("MainWindow", "Введите количество блоков в ряду"))
+        self.spinBox_ejectedObjects_in_row.setPrefix(_translate("MainWindow", "Объектов в ряду: "))
         self.pushButton_open_xgtf_files_and_load.setText(_translate("MainWindow", "Открыть рабочую папку"))
         self.label.setText(_translate("MainWindow", "Отсортированные объекты"))
         self.label_2.setText(_translate("MainWindow", "Неотсортированные объекты"))

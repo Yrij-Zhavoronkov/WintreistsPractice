@@ -1,4 +1,4 @@
-# Form implementation generated from reading ui file 'C:\Users\smeta\source\repos\Работа\computervision\DPE-3364\uuid_maker\table_objects.ui'
+# Form implementation generated from reading ui file 'C:\Users\smeta\source\repos\WintreistsPractice\uuid_maker\table_objects.ui'
 #
 # Created by: PyQt6 UI code generator 6.6.0
 #
