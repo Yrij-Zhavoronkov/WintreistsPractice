@@ -71,19 +71,17 @@ class ThreadForEjectingObjects(Thread):
             xgtf_files: typing.List[os.PathLike],
             callback_signal: pyqtBoundSignal,
             on_finish_callback: typing.Optional[typing.Callable[[], None]] = None,
+            on_start_callback: typing.Optional[typing.Callable[[], None]] = None,
         ):
         super().__init__()
         self.xgtf_files = xgtf_files
         self.callback_signal = callback_signal
         self.on_finish_callback = on_finish_callback
+        self.on_start_callback = on_start_callback
         self.stop_work = False
-        self.working = False
         self.sorted = False
         self.end_files = False
         self.continue_work = True
-        self.caching_data = False
-        self.cached_data = []
-        self.pause_work = False
         self.lock = Lock()
         pass
 
@@ -96,47 +94,27 @@ class ThreadForEjectingObjects(Thread):
                 if self.on_finish_callback is not None:
                     self.on_finish_callback()
                 return
-            while not self.caching_data and not self.continue_work:
+            while not self.continue_work:
                 self.lock.acquire(blocking=True)
+            if self.on_start_callback is not None:
+                self.on_start_callback()
             
-            self.working = True
             xgtf_file = self.xgtf_files.pop(0)
             for data in eject_objects(xgtf_file):
                 if self.stop_work: 
                     return # Выход из thread
-                while self.pause_work: 
-                    self.lock.acquire(blocking=True) # Приостановка работы
-
-                if not self.caching_data or self.continue_work:
-                    self.send_data(data)
-                else:
-                    self.cached_data.append(data)
-            self.working = False
-            if self.continue_work and self.on_finish_callback is not None: # 
+                self.send_data(data)
+            if self.on_finish_callback is not None: # 
                 self.on_finish_callback()
-            if self.continue_work:
-                self.continue_work = False
-                self.caching_data = True
-            else:
-                if self.caching_data:
-                    self.caching_data = False
+            self.continue_work = False
             
     def interinput(self):
         self.stop_work = True
 
     def notify(self):
-        self.pause_work = True
-        for data in self.cached_data:
-            self.send_data(data)
-        self.cached_data.clear()
-        self.continue_work, self.caching_data = (True, False) if self.working else (False, True)
-        self.pause_work = False
+        self.continue_work = True
         if self.lock.locked():
             self.lock.release()
-
-    def send_one_data(self):
-        if len(self.cached_data) > 0:
-            self.send_data(self.cached_data.pop(0))
 
     def send_data(self, data):
         self.callback_signal.emit(data, self.sorted)
@@ -147,7 +125,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def __init__(self):
         super(MainWindow, self).__init__()
         self.setupUi(self)
-        self.showMaximized()
 
         # Создание виджетов
         self.creating_widgets()
@@ -157,6 +134,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # Установка соединений между виджетами
         self.setup_connections()
 
+        # Финальное завершение вида окна
+        self.showMaximized()
+
         # Создание Lock
         self.sorted_lock = Lock()
         self.not_sorted_lock = Lock()
@@ -164,13 +144,20 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.ejected_objects_widgets_list: typing.List[EjectedObject] = []
 
         # Константа количества объектов в ряду
-        self.EJECTED_OBJECTS_IN_ROW = self.spinBox_ejectedObjects_in_row.value()
+        self.EJECTED_OBJECTS_IN_ROW = 3 #self.spinBox_ejectedObjects_in_row.value()
         # Debug
         # self.work_dir = r'C:\Users\smeta\source\repos\WintreistsPractice\xgtf_video'
         # self.open_xgtf_files()
 
     def setup_properties(self):
-        self.spinBox_ejectedObjects_in_row.setValue(3)
+        self.pushButtons_set = [
+            self.pushButton_set_1,
+            self.pushButton_set_2,
+            self.pushButton_set_3,
+            self.pushButton_set_4,
+        ]
+        self.gridLayout_sorted_objects.setSpacing(15)
+        self.gridLayout_not_sorted_objects.setSpacing(15)
         pass
 
     def setup_connections(self):
@@ -180,19 +167,27 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 self.open_work_folder, "Выберите рабочую папку:"
             )
         )
-        self.pushButton_load_next_objects.clicked.connect(
-            self.continue_ejecting_objects)
         self.pushButton_save_results.clicked.connect(self.save_results)
-        self.spinBox_ejectedObjects_in_row.valueChanged.connect(
-            self.spinBox_valueChanged)
+        # self.spinBox_ejectedObjects_in_row.valueChanged.connect(
+        #     self.spinBox_valueChanged)
+        for index, button in enumerate(self.pushButtons_set):
+            button.clicked.connect(
+                partial(
+                    self.ejected_objects_in_row_valueChanged,
+                    index + 1,
+                    button,
+                )
+            )
         self.make_widget_from_data.connect(self.func_for_creating_widgets)
         pass
 
-    def spinBox_valueChanged(self, value):
+    def ejected_objects_in_row_valueChanged(self, value:int, from_button: QPushButton):
         self.EJECTED_OBJECTS_IN_ROW = value
+        for button in self.pushButtons_set:
+            if button != from_button:
+                button.setChecked(False)
         self.updateGridLayout(sorted=False, just_update=True)
         self.updateGridLayout(sorted=True, just_update=True)
-
         pass
 
     def creating_widgets(self):
@@ -294,35 +289,26 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             xgtf_files=self.xgtf_file_names,
             callback_signal=self.make_widget_from_data,
             on_finish_callback=self.on_finish_thread,
+            on_start_callback=self.on_start_thread,
         )
         self.thread_for_ejecting_sorted_objects.start()
         self.thread_ejecting_object.start()
         pass
 
-    def continue_ejecting_objects(self):
-        if self.thread_ejecting_object.working:
-            self.disable_buttons()
-        self.thread_ejecting_object.notify()
-
+    def on_start_thread(self):
+        self.disable_buttons()
     def on_finish_thread(self):
-        if self.thread_ejecting_object.end_files:
-            self.pushButton_load_next_objects.setHidden(True)
-        if not self.thread_ejecting_object.stop_work:
-            self.enable_buttons()
-            self.activateWindow()
+        self.enable_buttons()
+        self.activateWindow()
 
     def show_buttons(self):
-        self.pushButton_load_next_objects.setVisible(True)
         self.pushButton_save_results.setVisible(True)
 
     def enable_buttons(self):
-        if not self.pushButton_load_next_objects.isHidden():
-            self.pushButton_load_next_objects.setEnabled(True)
         if not self.pushButton_save_results.isHidden():
             self.pushButton_save_results.setEnabled(True)
 
     def disable_buttons(self):
-        self.pushButton_load_next_objects.setEnabled(False)
         self.pushButton_save_results.setEnabled(False)
 
     def create_new_sorted_object(self, object_data: typing.Union[typing.Dict, EjectedObjectData]):
@@ -334,8 +320,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         widget.deleteCombinedObject.connect(self.deleteCombinedObject)
         widget.split_objects.connect(self.split_objects)
         self.gridLayout_sorted_objects.addWidget(
-            widget, grid_count//self.EJECTED_OBJECTS_IN_ROW, grid_count % self.EJECTED_OBJECTS_IN_ROW,
-            Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
+            widget, 
+            grid_count//self.EJECTED_OBJECTS_IN_ROW, 
+            grid_count % self.EJECTED_OBJECTS_IN_ROW,
+            Qt.AlignmentFlag.AlignTop,
+        )
         for exist_widget in self.ejected_objects_widgets_list:
             if widget.self_object_data[0].uuid == exist_widget.self_object_data[0].uuid:
                 exist_widget.combine_objects(widget.self_object_data)
@@ -365,8 +354,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         widget.deleteCombinedObject.connect(self.deleteCombinedObject)
         widget.split_objects.connect(self.split_objects)
         self.gridLayout_not_sorted_objects.addWidget(
-            widget, grid_count//self.EJECTED_OBJECTS_IN_ROW, grid_count % self.EJECTED_OBJECTS_IN_ROW,
-            Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
+            widget, 
+            grid_count//self.EJECTED_OBJECTS_IN_ROW, 
+            grid_count % self.EJECTED_OBJECTS_IN_ROW,
+            Qt.AlignmentFlag.AlignTop,
+        )
         self.ejected_objects_widgets_list.append(widget)
         self.not_sorted_lock.release()
         pass
@@ -378,23 +370,27 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             widget = gridLayout.takeAt(widget_index).widget()
             gridLayout.removeWidget(widget)
             widget.deleteLater()
-        while not sorted and gridLayout.count() < self.EJECTED_OBJECTS_IN_ROW*2:
-            self.thread_ejecting_object.send_one_data()
+            if not sorted and gridLayout.count() < self.EJECTED_OBJECTS_IN_ROW*2:
+                self.thread_ejecting_object.notify()
         for index in range(widget_index, gridLayout.count()):
             widget: EjectedObject = gridLayout.takeAt(widget_index).widget()
             gridLayout.removeWidget(widget)
             widget.self_object_data[0].position = (
                 index//self.EJECTED_OBJECTS_IN_ROW, index % self.EJECTED_OBJECTS_IN_ROW)
             gridLayout.addWidget(
-                widget, index//self.EJECTED_OBJECTS_IN_ROW, index % self.EJECTED_OBJECTS_IN_ROW)
-            # Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
+                widget, 
+                index//self.EJECTED_OBJECTS_IN_ROW, 
+                index % self.EJECTED_OBJECTS_IN_ROW,
+                Qt.AlignmentFlag.AlignTop)
         pass
 
     def closeEvent(self, event: QCloseEvent):
-        self.thread_for_ejecting_sorted_objects.interinput()
-        self.thread_ejecting_object.interinput()
-        self.thread_for_ejecting_sorted_objects.join()
-        self.thread_ejecting_object.join()
+        if self.thread_ejecting_object is not None:
+            self.thread_for_ejecting_sorted_objects.interinput()
+            self.thread_for_ejecting_sorted_objects.join()
+        if self.thread_for_ejecting_sorted_objects is not None:
+            self.thread_ejecting_object.interinput()
+            self.thread_ejecting_object.join()
         event.accept()
 
     def get_xgtf_file_name(self) -> typing.List[str]:
@@ -646,8 +642,8 @@ class WindowToCombiningTwoObjects(QDialog, Ui_combining_objects):
                 pixmap.loadFromData(image_data)
                 original_image_size = cv2.imdecode(
                     np.frombuffer(image_data, np.uint8), -1).shape
-                width_ratio = (300) / original_image_size[0]
-                height_ratio = (300) / original_image_size[1]
+                width_ratio = (200) / original_image_size[0]
+                height_ratio = (200) / original_image_size[1]
                 scale_ratio = min(width_ratio, height_ratio)
                 pixmap = pixmap.scaled(
                     int(original_image_size[1] * scale_ratio),
