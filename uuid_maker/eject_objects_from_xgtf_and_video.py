@@ -4,6 +4,7 @@ from pathlib import Path
 import io
 import os
 import typing
+from dataclasses import dataclass, field
 
 
 
@@ -21,10 +22,23 @@ class Position:
         self.y = y
         self.height = height
         self.width = width
+
+@dataclass
+class ObjectData:
+    file_name: str
+    object_id: int
+    uuid: str
+    images: typing.List[io.BytesIO] = field(default_factory=list)
+
+@dataclass
+class EjectedObjectFrameInfo:
+    truncated: bool
+    difficult: bool
+    position: Position
 #
 
 
-def eject_objects(path_to_xgtf_file: os.PathLike) -> typing.Dict:
+def eject_objects(path_to_xgtf_file: os.PathLike) -> typing.Generator[ObjectData, None, None]:
     path_to_xgtf_file = Path(path_to_xgtf_file)
     xgtf = ET.parse(path_to_xgtf_file)
     sourcefile = xgtf.getroot().find(f"./{VIPER}data/{VIPER}sourcefile")
@@ -33,15 +47,14 @@ def eject_objects(path_to_xgtf_file: os.PathLike) -> typing.Dict:
     video = cv2.VideoCapture(str(path_to_video_file))
 
     for xgtf_object in sourcefile.findall(f"./{VIPER}object[@name='Object']"):
-        objects_frame_position = {}
+        objects_frame_position: typing.Dict[int, EjectedObjectFrameInfo] = {}
         object_id = int(xgtf_object.attrib['id'])
         uuid = xgtf_object.find(f'./{VIPER}attribute[@name="UniqueId"]/').attrib['value'] if xgtf_object.find(f'./{VIPER}attribute[@name="UniqueId"]/') is not None else "0"
-        objects_images = {
-            "file_name": file_name,
-            "object_id": object_id,
-            "images": [],
-            'uuid': uuid
-        }
+        object_data = ObjectData(
+            file_name,
+            object_id,
+            uuid
+        )
 
         max_width, max_height = 0, 0
 
@@ -54,39 +67,34 @@ def eject_objects(path_to_xgtf_file: os.PathLike) -> typing.Dict:
             width = int(bbox.attrib['width'])
 
             for frame in range(framespan_borders[0], framespan_borders[1]+1):
-                object_frame_info = {
-                    'Truncated': False,
-                    'Difficult': False,
-                    'Position': Position(x, y, height, width)
-                }
+                object_frame_info = EjectedObjectFrameInfo(
+                    False,
+                    False,
+                    Position(x, y, height, width),
+                )
                 objects_frame_position[frame] = object_frame_info
         for truncated_info in xgtf_object.findall(f'./{VIPER}attribute[@name="Truncated"]/'):
             framespan_borders = list(
                 map(int, truncated_info.attrib['framespan'].split(":")))
             for frame in range(framespan_borders[0], framespan_borders[1]+1):
                 if truncated_info.attrib['value'] == 'true':
-                    try:
-                        objects_frame_position[frame]['Truncated'] = True
-                    except KeyError:
-                        pass
+                    if frame in objects_frame_position:
+                        objects_frame_position[frame].truncated = True
         for difficult_info in xgtf_object.findall(f'./{VIPER}attribute[@name="Difficult"]/'):
             if difficult_info.attrib['value'] == 'true':
                 framespan_borders = list(
                     map(int, difficult_info.attrib['framespan'].split(":")))
                 for frame in range(framespan_borders[0], framespan_borders[1]+1):
-                    try:
-                        objects_frame_position[frame]['Difficult'] = True
-                    except KeyError:
-                        pass
-        num_of_clear_data_frames = sum(
-            [not (objects_frame_position[key]['Truncated'] or objects_frame_position[key]['Difficult']) for key in objects_frame_position])
+                    if frame in objects_frame_position:
+                        objects_frame_position[frame].difficult = True
+        num_of_clear_data_frames = sum([not (objects_frame_position[key].truncated or objects_frame_position[key].difficult) for key in objects_frame_position])
         temp_objects_frame_position = {}
         if num_of_clear_data_frames < 15:
             keys = list(objects_frame_position.keys())
             if num_of_clear_data_frames > 0:
                 for index in range(len(objects_frame_position.keys())):
                     key = keys[index]
-                    if not (objects_frame_position[key]['Truncated'] or objects_frame_position[key]['Difficult']):
+                    if not (objects_frame_position[key].truncated or objects_frame_position[key].difficult):
                         temp_objects_frame_position[key] = objects_frame_position[key]
                         del objects_frame_position[key]
             for item in [objects_frame_position[list(objects_frame_position.keys())[index]] for index in range(0, len(objects_frame_position), len(objects_frame_position)//(15-num_of_clear_data_frames))]:
@@ -104,22 +112,22 @@ def eject_objects(path_to_xgtf_file: os.PathLike) -> typing.Dict:
 
         for frame in objects_frame_position:
             max_width = max(
-                max_width, objects_frame_position[frame]['Position'].width)
+                max_width, objects_frame_position[frame].position.width)
             max_height = max(
-                max_height, objects_frame_position[frame]['Position'].height)
+                max_height, objects_frame_position[frame].position.height)
 
         for frame in objects_frame_position:
             video.set(cv2.CAP_PROP_POS_FRAMES, frame)
             ret, video_frame = video.read()
             if ret:
                 object_frame_info = objects_frame_position[frame]
-                position: Position = object_frame_info['Position']
+                position: Position = object_frame_info.position
                 object_border = video_frame[position.y:position.y +
                                             position.height, position.x:position.x+position.width]
                 _, buffer = cv2.imencode('.jpg', object_border)
                 io_buffer = io.BytesIO(buffer)
-                objects_images["images"].append(io_buffer)
-        yield objects_images
+                object_data.images.append(io_buffer)
+        yield object_data
     video.release()
 
 
