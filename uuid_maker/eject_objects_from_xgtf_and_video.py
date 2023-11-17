@@ -23,12 +23,11 @@ class Position:
         self.height = height
         self.width = width
 
-@dataclass
-class ObjectData:
+class ObjectData(typing.NamedTuple):
     file_name: str
     object_id: int
     uuid: str
-    images: typing.List[io.BytesIO] = field(default_factory=list)
+    images: typing.List[io.BytesIO]
 
 @dataclass
 class EjectedObjectFrameInfo:
@@ -53,7 +52,8 @@ def eject_objects(path_to_xgtf_file: os.PathLike) -> typing.Generator[ObjectData
         object_data = ObjectData(
             file_name,
             object_id,
-            uuid
+            uuid,
+            [],
         )
 
         max_width, max_height = 0, 0
