@@ -78,14 +78,12 @@ class ThreadForEjectingObjects(Thread):
         self.on_finish_callback = on_finish_callback
         self.stop_work = False
         self.sorted = False
-        self.continue_work = True
         self.lock = Lock()
         pass
 
     def run(self):
         for xgtf_file in self.xgtf_files:
-            while not self.continue_work and not self.stop_work:
-                self.lock.acquire(blocking=True)
+            self.lock.acquire()
             if self.stop_work: 
                 return
             for data in eject_objects(xgtf_file):
@@ -94,7 +92,8 @@ class ThreadForEjectingObjects(Thread):
                 self.send_data(data)
             if self.on_finish_callback:
                 self.on_finish_callback()
-            self.continue_work = False
+            if not self.lock.locked():
+                self.lock.acquire()
             
     def interinput(self):
         self.stop_work = True
@@ -102,7 +101,6 @@ class ThreadForEjectingObjects(Thread):
             self.lock.release()
 
     def notify(self):
-        self.continue_work = True
         if self.lock.locked():
             self.lock.release()
 
@@ -136,8 +134,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # Константа количества объектов в ряду
         self.EJECTED_OBJECTS_IN_ROW = 3 #self.spinBox_ejectedObjects_in_row.value()
         # Debug
-        # self.work_dir = r'C:\Users\smeta\source\repos\WintreistsPractice\xgtf_video'
-        # self.open_xgtf_files()
+        self.work_dir = r'C:\Users\smeta\source\repos\WintreistsPractice\xgtf_video'
+        self.open_xgtf_files()
 
     def setup_properties(self):
         self.pushButtons_set = [
