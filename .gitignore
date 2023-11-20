@@ -8,3 +8,4 @@ venv/*
 .idea/inspectionProfiles/profiles_settings.xml
 .idea/.gitignore
 result.xlsx
+uuid_maker/debug
