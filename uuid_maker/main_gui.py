@@ -83,22 +83,16 @@ class ThreadForEjectingObjects(Thread):
         pass
 
     def run(self):
-        while True:
-            if len(self.xgtf_files) == 0:
-                if self.on_finish_callback is not None:
-                    self.on_finish_callback()
-                return
+        for xgtf_file in self.xgtf_files:
             while not self.continue_work and not self.stop_work:
                 self.lock.acquire(blocking=True)
             if self.stop_work: 
                 return
-
-            xgtf_file = self.xgtf_files.pop(0)
             for data in eject_objects(xgtf_file):
                 if self.stop_work: 
                     return # Выход из thread
                 self.send_data(data)
-            if self.on_finish_callback is not None: # 
+            if self.on_finish_callback:
                 self.on_finish_callback()
             self.continue_work = False
             
@@ -257,10 +251,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         for widget in self.ejected_objects_widgets_list:
             widget.deleteLater()
         self.ejected_objects_widgets_list.clear()
-        if self.thread_for_ejecting_sorted_objects is not None:
+        if self.thread_for_ejecting_sorted_objects:
             self.thread_for_ejecting_sorted_objects.interinput()
             self.thread_for_ejecting_sorted_objects.join()
-        if self.thread_ejecting_object is not None:
+        if self.thread_ejecting_object:
             self.thread_ejecting_object.interinput()
             self.thread_ejecting_object.join()
         while self.gridLayout_not_sorted_objects.count():
