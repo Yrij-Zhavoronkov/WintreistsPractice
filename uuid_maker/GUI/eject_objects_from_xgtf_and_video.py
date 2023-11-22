@@ -1,5 +1,6 @@
 import cv2
-from xml.etree import ElementTree as ET
+# from xml.etree import ElementTree as ET
+from lxml import etree as ET
 from pathlib import Path
 import io
 import os
@@ -130,6 +131,10 @@ def make_change_uuid(path_to_xgtf_file: os.PathLike, data: typing.List[typing.Di
             value.tail = uuid.text.replace("    ", "", 1)
             value.set("value", object_data['uuid'])
             uuid.append(value)
+
+    
+    ET.register_namespace("ns", VIPER.strip("{}"))
+    ET.register_namespace("data", VIPERDATA.strip("{}"))
     xgtf.write(str(path_to_xgtf_file), encoding="UTF-8", xml_declaration=True, method='xml')
 
 
