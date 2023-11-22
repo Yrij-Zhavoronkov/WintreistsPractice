@@ -26,6 +26,7 @@ class OpenEjectedObject(QDialog, Ui_Form_open_ejected_object):
         # Заполнить виджет
         WindowToCombiningTwoObjects.setUpObjectsImages(
             self, self.verticalLayout_main, self.object_data)
+        self.showMaximized()
 
     def recreateWindowData(self):
         WindowToCombiningTwoObjects.setUpObjectsImages(

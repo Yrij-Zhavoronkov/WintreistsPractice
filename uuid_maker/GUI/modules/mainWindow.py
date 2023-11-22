@@ -127,21 +127,17 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         for widget in self.ejected_objects_widgets_list:
             for object in widget.self_object_data:
                 if object.changed:
+                    data = {
+                        'object_id': object.object_id,
+                        'uuid': object.uuid
+                    }
                     if object.file_name in save_data:
-                        save_data[object.file_name].append({
-                            'object_id': object.object_id,
-                            'uuid': object.uuid
-                        })
+                        save_data[object.file_name].append(data)
                     else:
-                        save_data[object.file_name] = [{
-                            'object_id': object.object_id,
-                            'uuid': object.uuid
-                        }]
+                        save_data[object.file_name] = [data]
         for file_name in save_data:
-            path_to_xgtf_file = Path(self.work_dir).joinpath(
-                file_name.rpartition(".")[0]+".xgtf")
-            make_change_uuid(
-                path_to_xgtf_file, save_data[file_name])
+            path_to_xgtf_file = Path(self.work_dir).joinpath(file_name.rpartition(".")[0]+".xgtf")
+            make_change_uuid(path_to_xgtf_file, save_data[file_name])
         QMessageBox.information(self, "Сохранение", "Результаты сохранены")
         self.enable_buttons()
         pass
@@ -160,7 +156,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     def open_xgtf_files(self):
         self.show_buttons()
-        self.disable_buttons()
         if self.thread_for_ejecting_sorted_objects:
             self.thread_for_ejecting_sorted_objects.interinput()
             self.thread_for_ejecting_sorted_objects.join()
@@ -193,7 +188,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.thread_ejecting_object.start()
 
     def on_finish_thread(self):
-        self.enable_buttons()
         self.activateWindow()
 
     def show_buttons(self):
@@ -265,8 +259,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             widget = gridLayout.takeAt(widget_index).widget()
             gridLayout.removeWidget(widget)
             widget.deleteLater()
-            if not sorted and gridLayout.count() < self.EJECTED_OBJECTS_IN_ROW*2:
-                self.thread_ejecting_object.notify()
         for index in range(widget_index, gridLayout.count()):
             widget: EjectedObject = gridLayout.takeAt(widget_index).widget()
             gridLayout.removeWidget(widget)

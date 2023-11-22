@@ -9,3 +9,5 @@ venv/*
 .idea/.gitignore
 result.xlsx
 uuid_maker/debug
+clear_xgtf
+*.pyc

@@ -47,7 +47,7 @@ class Ui_MainWindow(object):
         self.pushButton_open_xgtf_files_and_load.setObjectName("pushButton_open_xgtf_files_and_load")
         self.horizontalLayout_4.addWidget(self.pushButton_open_xgtf_files_and_load)
         self.pushButton_save_results = QtWidgets.QPushButton(parent=self.centralwidget)
-        self.pushButton_save_results.setEnabled(False)
+        self.pushButton_save_results.setEnabled(True)
         self.pushButton_save_results.setText("")
         icon1 = QtGui.QIcon()
         icon1.addPixmap(QtGui.QPixmap(":/Images/save_files.svg"), QtGui.QIcon.Mode.Normal, QtGui.QIcon.State.Off)

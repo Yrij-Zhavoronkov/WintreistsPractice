@@ -1,4 +1,4 @@
-from threading import Thread, Lock
+from threading import Thread
 from os import PathLike
 from typing import List, Callable, Optional
 
@@ -17,30 +17,17 @@ class ThreadForEjectingObjects(Thread):
         self.callback = callback
         self.on_finish_callback = on_finish_callback
         self.stop_work = False
-        self.lock = Lock()
         pass
 
     def run(self):
         for xgtf_file in self.xgtf_files:
-            print(f"{self} req lock")
-            self.lock.acquire()
-            print(f"{self} work with {xgtf_file.name}")
-            if self.stop_work: 
-                return
             for data in eject_objects(xgtf_file):
                 if self.stop_work: 
                     return # Выход из thread
                 self.callback(data)
-            if self.on_finish_callback:
-                self.on_finish_callback()
-            if not self.lock.locked():
-                self.lock.acquire()
+        if self.on_finish_callback:
+            self.on_finish_callback()
             
     def interinput(self):
         self.stop_work = True
-        self.notify()
-
-    def notify(self):
-        if self.lock.locked():
-            self.lock.release()
   

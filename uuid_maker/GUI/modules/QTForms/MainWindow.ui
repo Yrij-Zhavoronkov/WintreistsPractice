@@ -72,7 +72,7 @@
           <item>
            <widget class="QPushButton" name="pushButton_save_results">
             <property name="enabled">
-             <bool>false</bool>
+             <bool>true</bool>
             </property>
             <property name="toolTip">
              <string>Сохранить результаты</string>
