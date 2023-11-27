@@ -12,14 +12,14 @@ from PyQt6 import QtCore, QtGui, QtWidgets
 class Ui_Form_open_ejected_object(object):
     def setupUi(self, Form_open_ejected_object):
         Form_open_ejected_object.setObjectName("Form_open_ejected_object")
-        Form_open_ejected_object.resize(704, 504)
+        Form_open_ejected_object.resize(400, 300)
         self.verticalLayout = QtWidgets.QVBoxLayout(Form_open_ejected_object)
         self.verticalLayout.setObjectName("verticalLayout")
         self.scrollArea = QtWidgets.QScrollArea(parent=Form_open_ejected_object)
         self.scrollArea.setWidgetResizable(True)
         self.scrollArea.setObjectName("scrollArea")
         self.scrollAreaWidgetContents = QtWidgets.QWidget()
-        self.scrollAreaWidgetContents.setGeometry(QtCore.QRect(0, 0, 684, 453))
+        self.scrollAreaWidgetContents.setGeometry(QtCore.QRect(0, 0, 380, 249))
         self.scrollAreaWidgetContents.setObjectName("scrollAreaWidgetContents")
         self.verticalLayout_3 = QtWidgets.QVBoxLayout(self.scrollAreaWidgetContents)
         self.verticalLayout_3.setObjectName("verticalLayout_3")

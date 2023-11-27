@@ -61,8 +61,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.pushButton_set_3,
             self.pushButton_set_4,
         ]
-        self.gridLayout_sorted_objects.setSpacing(15)
-        self.gridLayout_not_sorted_objects.setSpacing(15)
+        self.gridLayout_sorted_objects.setSpacing(10)
+        self.gridLayout_not_sorted_objects.setSpacing(10)
+        with open(Path(__file__).parent.parent.joinpath("resources", "css", "main.css"), "r") as file:
+            self.setStyleSheet(file.read())
         pass
 
     def setup_connections(self):
