@@ -1,0 +1,41 @@
+/* Тут будут стили для красивости */
+
+/* Всё что цвет 0D1321 */
+QMainWindow {
+    background-color: #0D1321;
+}
+QDialog{
+    background-color: #0D1321;
+}
+QScrollArea > QWidget > QWidget{
+    background-color: #0D1321;
+}
+/* Всё что цвет 1D2D44 */
+QScrollArea QWidget QGroupBox, QScrollArea QWidget QLabel{
+    background-color: #1D2D44;
+}
+/* Всё что цвет 3E5C76 */
+QScrollArea > QWidget > QScrollBar{
+    background-color: #3E5C76;
+}
+/* Всё что цвет 748CAB */
+QPushButton{
+    background-color: #748CAB;
+}
+/* Всё что цвет F0EBD8 */
+QLabel{
+    color: #F0EBD8;
+}
+
+/* Дизайны для QScrollArea */
+QScrollArea{
+    border: none;
+}
+/* Дизайны для QGroupBox */
+QScrollArea QGroupBox {
+    border: 2px solid black;
+}
+/* Дизайны для QLabel */
+QGroupBox > QLabel{
+    font-size: 25px;
+}

@@ -1,0 +1,11 @@
+/* Тут будут стили для красивости */
+
+
+/* Дизайны для QScrollArea */
+QScrollArea{
+    border: none;
+}
+/* Дизайны для QLabel */
+QGroupBox > QLabel{
+    font-size: 25px;
+}

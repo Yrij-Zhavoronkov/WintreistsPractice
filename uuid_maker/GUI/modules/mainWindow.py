@@ -1,6 +1,6 @@
 from PyQt6.QtWidgets import QMainWindow, QFileDialog, QPushButton, QMessageBox
 from PyQt6.QtCore import pyqtSignal, Qt
-from PyQt6.QtGui import QCloseEvent
+from PyQt6.QtGui import QCloseEvent, QAction
 
 from threading import Lock
 from typing import List
@@ -63,8 +63,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         ]
         self.gridLayout_sorted_objects.setSpacing(10)
         self.gridLayout_not_sorted_objects.setSpacing(10)
-        with open(Path(__file__).parent.parent.joinpath("resources", "css", "main.css"), "r") as file:
-            self.setStyleSheet(file.read())
+        self.setStyleSheet(Path(__file__).parent.parent.joinpath("resources", "css", "Обычная тема.css").read_text())
         pass
 
     def setup_connections(self):
@@ -91,6 +90,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         for button in self.pushButtons_set:
             if button != from_button:
                 button.setChecked(False)
+                button.setEnabled(True)
+            if button == from_button:
+                button.setEnabled(False)
         self.updateGridLayout(sorted=False, just_update=True)
         self.updateGridLayout(sorted=True, just_update=True)
         pass
@@ -107,6 +109,19 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         self.thread_for_ejecting_sorted_objects = None
         self.thread_ejecting_object = None
+
+        for style in Path(__file__).parent.parent.joinpath("resources", "css").glob("*.css"):
+            action = QAction(
+                parent=self.menu_styles,
+                text=style.stem
+            )
+            action.triggered.connect(
+                partial(
+                    lambda style: self.setStyleSheet(style.read_text()),
+                    style,
+                )
+            )
+            self.menu_styles.addAction(action)
         pass
 
     def split_objects(self, object_data: EjectedObjectData):
