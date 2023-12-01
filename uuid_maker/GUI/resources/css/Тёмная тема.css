@@ -37,10 +37,3 @@ QScrollArea{
 QMainWindow > QWidget > QGroupBox > QLabel{
     font-size: 15px;
 }
-
-/* Debug */
-QWidget#widget_for_data{
-    border-color: white;
-    border-style: solid;
-    border-width: 1px;
-}

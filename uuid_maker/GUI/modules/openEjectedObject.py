@@ -17,6 +17,7 @@ class OpenEjectedObject(QDialog, Ui_Form_open_ejected_object):
     def __init__(self, parent, object_data: TypeEjectedObject):
         super().__init__(parent)
         self.setupUi(self)
+        self.showMaximized()
 
         self.pushButton.clicked.connect(self.close)
         self.setWindowTitle('Открытый объект')
@@ -26,7 +27,6 @@ class OpenEjectedObject(QDialog, Ui_Form_open_ejected_object):
         # Заполнить виджет
         WindowToCombiningTwoObjects.setUpObjectsImages(
             self, self.verticalLayout_main, self.object_data)
-        self.showMaximized()
 
     def recreateWindowData(self):
         WindowToCombiningTwoObjects.setUpObjectsImages(

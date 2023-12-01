@@ -1,8 +1,8 @@
 import typing
 from PyQt6 import QtGui
-from PyQt6.QtWidgets import QDialog, QVBoxLayout, QGridLayout, QLabel, QPushButton, QSizePolicy, QGroupBox, QSpacerItem, QWidget
-from PyQt6.QtCore import pyqtSignal, Qt
-from PyQt6.QtGui import QPixmap, QResizeEvent
+from PyQt6.QtWidgets import QDialog, QVBoxLayout, QGridLayout, QLabel, QPushButton, QSizePolicy, QGroupBox, QSpacerItem, QWidget, QApplication
+from PyQt6.QtCore import pyqtSignal
+from PyQt6.QtGui import QPixmap
 
 from functools import partial
 from cv2 import imdecode
@@ -29,7 +29,7 @@ class WindowToCombiningTwoObjects(QDialog, Ui_combining_objects):
         self.combining = False
         self.buttonBox.accepted.connect(self.acceptCombining)
         self.buttonBox.rejected.connect(self.rejectCombining)
-        
+
         self.setUpObjectsImages(
             self.verticalLayout_first_object, self.first_object_data)
         self.setUpObjectsImages(
@@ -46,16 +46,17 @@ class WindowToCombiningTwoObjects(QDialog, Ui_combining_objects):
             if widget is not None:
                 widget.deleteLater()
 
+        
         for object_data in objects_data:
-            widget_for_data = QWidget()
-            widget_for_data.setObjectName("widget_for_data") # DEBUG
-            gridLayout_for_data = QGridLayout()
-            widget_for_data.setLayout(gridLayout_for_data)
             widget = QGroupBox(self)
             widget_layout = QVBoxLayout()
             widget.setLayout(widget_layout)
+            widget_for_data = QWidget(widget)
+            gridLayout_for_data = QGridLayout()
+            widget_for_data.setLayout(gridLayout_for_data)
             widget_layout.addWidget(widget_for_data)
             layout.addWidget(widget)
+            
 
             # Наполняем полезной информацией
             gridLayout_for_data.addWidget(
@@ -83,24 +84,25 @@ class WindowToCombiningTwoObjects(QDialog, Ui_combining_objects):
                 ),
                 2, 1
             )
+            
+            QApplication.processEvents() # Отрисовываем уже готовое
             # Наполняем картинками
             image_widget = QGroupBox(widget, title="Изображения")
             gridLayout_for_images = QGridLayout()
             image_widget.setLayout(gridLayout_for_images)
-            print(widget_for_data.width())
-            max_width = imdecode(frombuffer(object_data.images[0].getvalue(), uint8), -1).shape
-            for image in object_data.images[1:]:
+            max_width = 0
+            for image in object_data.images:
                 image_data = image.getvalue()
                 original_image_size = imdecode(
                     frombuffer(image_data, uint8), -1).shape
-                if max_width < original_image_size:
-                    max_width = original_image_size
+                scale_ratio = min((200) / original_image_size[0], (200) / original_image_size[1])
+                scaled_width = int(original_image_size[1] * scale_ratio)
+                if max_width < scaled_width:
+                    max_width = scaled_width
             else:
-                scale_ratio = min((200) / original_image_size[1], (200) / original_image_size[0])
-                max_width = int(original_image_size[1] * scale_ratio)
-                images_in_row = int(ceil(widget_for_data.width() / (max_width + gridLayout_for_images.spacing()*2)))
+                images_in_row = ceil(widget_for_data.width() / (max_width + gridLayout_for_images.spacing()*2))
                 pass
-        
+            
             for image in object_data.images:
                 pixmap = QPixmap()
                 image_data = image.getvalue()
