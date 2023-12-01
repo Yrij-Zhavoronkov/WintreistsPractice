@@ -6,6 +6,6 @@ QScrollArea{
     border: none;
 }
 /* Дизайны для QLabel */
-QGroupBox > QLabel{
-    font-size: 25px;
+QMainWindow > QWidget > QGroupBox > QLabel{
+    font-size: 15px;
 }

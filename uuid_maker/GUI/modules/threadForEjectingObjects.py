@@ -3,7 +3,7 @@ from os import PathLike
 from typing import List, Callable, Optional
 
 from .classes import ObjectData
-from ..eject_objects_from_xgtf_and_video import eject_objects
+from ..eject_objects_from_xgtf_and_video import ejectObjects
 
 class ThreadForEjectingObjects(Thread):
     def __init__(
@@ -21,7 +21,7 @@ class ThreadForEjectingObjects(Thread):
 
     def run(self):
         for xgtf_file in self.xgtf_files:
-            for data in eject_objects(xgtf_file):
+            for data in ejectObjects(xgtf_file):
                 if self.stop_work: 
                     return # Выход из thread
                 self.callback(data)

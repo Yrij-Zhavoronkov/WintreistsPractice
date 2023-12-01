@@ -15,13 +15,13 @@ from .classes import (
     ObjectData,
     EjectedObjectData,
     EjectedObjectDataFileNameAndObjectID,
-    TYPE_EJECTED_OBJECT,
+    TypeEjectedObject,
     UUID_LENGTH,
 )
 from .ejectedObject import EjectedObject
 from .tableObjects import TableObjects
 from .threadForEjectingObjects import ThreadForEjectingObjects
-from ..eject_objects_from_xgtf_and_video import make_change_uuid
+from ..eject_objects_from_xgtf_and_video import makeChangeUUID
 from ..resources import resources_file
 
 class MainWindow(QMainWindow, Ui_MainWindow):
@@ -128,13 +128,13 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.create_new_not_sorted_object(object_data)
         pass
 
-    def move_notSorted_to_Sorted(self, object_data: TYPE_EJECTED_OBJECT):
+    def move_notSorted_to_Sorted(self, object_data: TypeEjectedObject):
         self.updateGridLayout(object_data[0].position, object_data[0].sorted)
         self.deleteCombinedObject(EjectedObjectDataFileNameAndObjectID(
             object_data[0].file_name, object_data[0].object_id))
-        for object in object_data:
-            object.changed = True
-            self.create_new_sorted_object(object)
+        for ejected_object in object_data:
+            ejected_object.changed = True
+            self.create_new_sorted_object(ejected_object)
 
         pass
 
@@ -142,19 +142,19 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.disable_buttons()
         save_data: Dict[List] = {}
         for widget in self.ejected_objects_widgets_list:
-            for object in widget.self_object_data:
-                if object.changed:
+            for ejected_object in widget.self_object_data:
+                if ejected_object.changed:
                     data = {
-                        'object_id': object.object_id,
-                        'uuid': object.uuid
+                        'object_id': ejected_object.object_id,
+                        'uuid': ejected_object.uuid
                     }
-                    if object.file_name in save_data:
-                        save_data[object.file_name].append(data)
+                    if ejected_object.file_name in save_data:
+                        save_data[ejected_object.file_name].append(data)
                     else:
-                        save_data[object.file_name] = [data]
+                        save_data[ejected_object.file_name] = [data]
         for file_name in save_data:
             path_to_xgtf_file = Path(self.work_dir).joinpath(file_name.rpartition(".")[0]+".xgtf")
-            make_change_uuid(path_to_xgtf_file, save_data[file_name])
+            makeChangeUUID(path_to_xgtf_file, save_data[file_name])
         QMessageBox.information(self, "Сохранение", "Результаты сохранены")
         self.enable_buttons()
         pass
@@ -168,7 +168,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             if widget_version == deleting_object:
                 self.ejected_objects_widgets_list.remove(widget)
                 widget.deleteLater()
-                return None
+                return
         pass
 
     def open_xgtf_files(self):
@@ -233,7 +233,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         )
         for exist_widget in self.ejected_objects_widgets_list:
             if widget.self_object_data[0].uuid == exist_widget.self_object_data[0].uuid:
-                exist_widget.combine_objects(widget.self_object_data)
+                exist_widget.combineObjects(widget.self_object_data)
                 self.sorted_lock.release()
                 return
         self.ejected_objects_widgets_list.append(widget)
@@ -252,7 +252,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             object_data, self, (grid_count//self.EJECTED_OBJECTS_IN_ROW, grid_count % self.EJECTED_OBJECTS_IN_ROW), sorted=False)
         for exist_widget in self.ejected_objects_widgets_list:
             if widget.self_object_data[0].uuid == exist_widget.self_object_data[0].uuid:
-                exist_widget.combine_objects(widget.self_object_data)
+                exist_widget.combineObjects(widget.self_object_data)
                 self.not_sorted_lock.release()
                 return
 

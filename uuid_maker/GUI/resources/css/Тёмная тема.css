@@ -15,7 +15,7 @@ QScrollArea QWidget QGroupBox, QScrollArea QWidget QLabel{
     background-color: #1D2D44;
 }
 /* Всё что цвет 3E5C76 */
-QScrollArea > QWidget > QScrollBar{
+QScrollArea > QWidget > QScrollBar, QScrollBar{
     background-color: #3E5C76;
 }
 /* Всё что цвет 748CAB */
@@ -26,16 +26,21 @@ QPushButton{
 QLabel{
     color: #F0EBD8;
 }
-
+QGroupBox::title{
+    color: #F0EBD8;
+}
 /* Дизайны для QScrollArea */
 QScrollArea{
     border: none;
 }
-/* Дизайны для QGroupBox */
-QScrollArea QGroupBox {
-    border: 2px solid black;
-}
 /* Дизайны для QLabel */
-QGroupBox > QLabel{
-    font-size: 25px;
+QMainWindow > QWidget > QGroupBox > QLabel{
+    font-size: 15px;
+}
+
+/* Debug */
+QWidget#widget_for_data{
+    border-color: white;
+    border-style: solid;
+    border-width: 1px;
 }

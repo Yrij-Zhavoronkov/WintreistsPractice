@@ -16,12 +16,8 @@ class EjectedObjectDataFileNameAndObjectID:
 
 
 @dataclass
-class EjectedObjectDataImages:
+class EjectedObjectData(EjectedObjectDataFileNameAndObjectID):
     images: typing.List[io.BytesIO]
-
-
-@dataclass
-class EjectedObjectData(EjectedObjectDataImages, EjectedObjectDataFileNameAndObjectID):
     uuid: str
     position: typing.Tuple[int, int] = (0, 0)
     sorted: bool = False
@@ -36,13 +32,12 @@ class EjectedObjectData(EjectedObjectDataImages, EjectedObjectDataFileNameAndObj
     def __ne__(self, other_object: object) -> bool:
         return not self.__eq__(other_object)
 
-
+@dataclass
 class Position:
-    def __init__(self, x, y, height, width):
-        self.x = x
-        self.y = y
-        self.height = height
-        self.width = width
+    x: int
+    y: int
+    height: int
+    width: int
 
 
 class ObjectData(typing.NamedTuple):
@@ -60,6 +55,6 @@ class EjectedObjectFrameInfo:
 
 
 # Константы
-TYPE_EJECTED_OBJECT = typing.List[EjectedObjectData]
+TypeEjectedObject = typing.List[EjectedObjectData]
 UUID_LENGTH = 32
 #

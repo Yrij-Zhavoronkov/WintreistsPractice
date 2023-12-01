@@ -16,7 +16,7 @@ VIPERDATA = "{http://lamp.cfar.umd.edu/viperdata#}"
 #
 
 
-def eject_objects(path_to_xgtf_file: os.PathLike) -> typing.Generator[ObjectData, None, None]:
+def ejectObjects(path_to_xgtf_file: os.PathLike) -> typing.Generator[ObjectData, None, None]:
     path_to_xgtf_file = Path(path_to_xgtf_file)
     xgtf = ET.parse(path_to_xgtf_file)
     sourcefile = xgtf.getroot().find(f"./{VIPER}data/{VIPER}sourcefile")
@@ -28,12 +28,6 @@ def eject_objects(path_to_xgtf_file: os.PathLike) -> typing.Generator[ObjectData
         objects_frame_position: typing.Dict[int, EjectedObjectFrameInfo] = {}
         object_id = int(xgtf_object.attrib['id'])
         uuid = xgtf_object.find(f'./{VIPER}attribute[@name="UniqueId"]/').attrib['value'] if xgtf_object.find(f'./{VIPER}attribute[@name="UniqueId"]/') is not None else "0"
-        object_data = ObjectData(
-            file_name,
-            object_id,
-            uuid,
-            [],
-        )
 
         max_width, max_height = 0, 0
 
@@ -95,6 +89,13 @@ def eject_objects(path_to_xgtf_file: os.PathLike) -> typing.Generator[ObjectData
             max_height = max(
                 max_height, objects_frame_position[frame].position.height)
 
+        object_data = ObjectData(
+            file_name,
+            object_id,
+            uuid,
+            [],
+        )
+
         for frame in objects_frame_position:
             video.set(cv2.CAP_PROP_POS_FRAMES, frame)
             ret, video_frame = video.read()
@@ -110,23 +111,23 @@ def eject_objects(path_to_xgtf_file: os.PathLike) -> typing.Generator[ObjectData
     video.release()
 
 
-def make_change_uuid(path_to_xgtf_file: os.PathLike, data: typing.List[typing.Dict]):
+def makeChangeUUID(path_to_xgtf_file: os.PathLike, data: typing.List[typing.Dict]):
     path_to_xgtf_file = Path(path_to_xgtf_file)
     xgtf = ET.parse(path_to_xgtf_file)
     sourcefile = xgtf.getroot().find(f"./{VIPER}data/{VIPER}sourcefile")
     for object_data in data:
-        object = sourcefile.find(
+        xgtf_object = sourcefile.find(
             f"./{VIPER}object[@id='{object_data['object_id']}']")
-        if object.find(f"./{VIPER}attribute[@name='UniqueId']/") is not None:
-            object.find(f"./{VIPER}attribute[@name='UniqueId']/").attrib['value'] = object_data['uuid']
+        if xgtf_object.find(f"./{VIPER}attribute[@name='UniqueId']/") is not None:
+            xgtf_object.find(f"./{VIPER}attribute[@name='UniqueId']/").attrib['value'] = object_data['uuid']
         else:
-            pos_attr = object.find(f"./{VIPER}attribute[@name='Position']")
-            diff_attr = object.find(f"./{VIPER}attribute[@name='Difficult']")
+            pos_attr = xgtf_object.find(f"./{VIPER}attribute[@name='Position']")
+            diff_attr = xgtf_object.find(f"./{VIPER}attribute[@name='Difficult']")
             uuid = ET.Element(f"{VIPER}attribute")
             uuid.set("name", "UniqueId")
             uuid.tail, uuid.text = pos_attr.tail, pos_attr.text
             pos_attr.tail, pos_attr.text = diff_attr.tail, diff_attr.text
-            object.append(uuid)
+            xgtf_object.append(uuid)
             value = ET.Element(f"{VIPERDATA}svalue")
             value.tail = uuid.text.replace("    ", "", 1)
             value.set("value", object_data['uuid'])

@@ -6,7 +6,7 @@ from .QTForms.openEjectedObject import Ui_Form_open_ejected_object
 from .windowToCombiningTwoObjects import WindowToCombiningTwoObjects
 from .classes import (
     EjectedObjectData,
-    TYPE_EJECTED_OBJECT,
+    TypeEjectedObject,
 )
 
 
@@ -14,7 +14,7 @@ from .classes import (
 class OpenEjectedObject(QDialog, Ui_Form_open_ejected_object):
     split_objects = pyqtSignal(EjectedObjectData)
 
-    def __init__(self, parent, object_data: TYPE_EJECTED_OBJECT):
+    def __init__(self, parent, object_data: TypeEjectedObject):
         super().__init__(parent)
         self.setupUi(self)
 

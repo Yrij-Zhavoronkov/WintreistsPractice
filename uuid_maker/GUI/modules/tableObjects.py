@@ -5,8 +5,9 @@ from PyQt6.QtGui import QDragEnterEvent, QDropEvent
 import pickle
 
 from .QTForms.table_objects import Ui_Form_table_objects
+from .ejectedObject import EjectedObject
 from .classes import (
-    TYPE_EJECTED_OBJECT,
+    TypeEjectedObject,
 )
 
 class TableObjects(QWidget, Ui_Form_table_objects):
@@ -22,9 +23,9 @@ class TableObjects(QWidget, Ui_Form_table_objects):
 
     def dragEnterEvent(self, event: QDragEnterEvent = None) -> None:
         if self.sorted:
-            if event.mimeData().hasFormat("EjectedObject"):
-                data: TYPE_EJECTED_OBJECT = pickle.loads(
-                    event.mimeData().data("EjectedObject"))
+            if event.mimeData().hasFormat(EjectedObject.__name__):
+                data: TypeEjectedObject = pickle.loads(
+                    event.mimeData().data(EjectedObject.__name__))
                 if not data[0].sorted:
                     event.accept()
                 else:
@@ -36,10 +37,10 @@ class TableObjects(QWidget, Ui_Form_table_objects):
 
     def dropEvent(self, event: QDropEvent = None) -> None:
         if self.sorted:
-            if event.mimeData().hasFormat("EjectedObject"):
+            if event.mimeData().hasFormat(EjectedObject.__name__):
                 event.accept()
-                data: TYPE_EJECTED_OBJECT = pickle.loads(
-                    event.mimeData().data("EjectedObject"))
+                data: TypeEjectedObject = pickle.loads(
+                    event.mimeData().data(EjectedObject.__name__))
 
                 dialog = QMessageBox.question(
                     self, 'Объект', 'Добавить объект в отсортированное?')

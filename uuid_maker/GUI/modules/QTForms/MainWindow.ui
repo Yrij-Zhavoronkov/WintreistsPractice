@@ -6,17 +6,12 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>937</width>
-    <height>543</height>
+    <width>938</width>
+    <height>542</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>XGTFUuidCombiner</string>
-  </property>
-  <property name="styleSheet">
-   <string notr="true">QGroupBox {
-	padding: 0px;
-}</string>
   </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QVBoxLayout" name="verticalLayout_5">
@@ -380,7 +375,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>937</width>
+     <width>938</width>
      <height>21</height>
     </rect>
    </property>

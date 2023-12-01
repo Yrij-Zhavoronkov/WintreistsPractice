@@ -14,9 +14,8 @@ from .classes import (
     EjectedObjectDataFileNameAndObjectID, 
     EjectedObjectData, 
     ObjectData,
-    EjectedObjectDataImages,
     UUID_LENGTH,
-    TYPE_EJECTED_OBJECT,
+    TypeEjectedObject,
 )
 from .openEjectedObject import OpenEjectedObject
 from .windowToCombiningTwoObjects import WindowToCombiningTwoObjects
@@ -52,18 +51,18 @@ class EjectedObject(QWidget, Ui_Form_Ejected_Object):
             if ejected_object_data.sorted:
                 ejected_object_data.changed = True
 
-        self.self_object_data: TYPE_EJECTED_OBJECT = [ejected_object_data]
+        self.self_object_data: TypeEjectedObject = [ejected_object_data]
         self.objects_data: List[EjectedObjectDataFileNameAndObjectID] = [
             EjectedObjectDataFileNameAndObjectID(
                 ejected_object_data.file_name,
                 ejected_object_data.object_id
             )]
-        self.object_images: EjectedObjectDataImages = ejected_object_data.images
+        self.object_images = ejected_object_data.images
         
 
         self.mouse_in_widget = False
-        self.generator_for_images = self.get_image()
-        self.set_next_image()
+        self.generator_for_images = self.getImage()
+        self.setNextImage()
         self.timer = QTimer(self)
         self.timer.setSingleShot(True)
         self.timer.setInterval(1500)
@@ -74,7 +73,7 @@ class EjectedObject(QWidget, Ui_Form_Ejected_Object):
         if event.buttons() == Qt.MouseButton.LeftButton:
             drag = QDrag(self)
             mime = QMimeData()
-            mime.setData("EjectedObject", QByteArray(
+            mime.setData(EjectedObject.__name__, QByteArray(
                 pickle.dumps(self.self_object_data)))
             drag.setMimeData(mime)
             drag.exec(Qt.DropAction.MoveAction)
@@ -82,51 +81,50 @@ class EjectedObject(QWidget, Ui_Form_Ejected_Object):
         return super().mouseMoveEvent(event)
 
     def dragEnterEvent(self, event: QDragEnterEvent = None) -> None:
-        if event.mimeData().hasFormat("EjectedObject"):
-            data: TYPE_EJECTED_OBJECT = pickle.loads(
-                event.mimeData().data("EjectedObject"))
+        if event.mimeData().hasFormat(EjectedObject.__name__):
+            data: TypeEjectedObject = pickle.loads(
+                event.mimeData().data(EjectedObject.__name__))
             for objects_data in data:
                 temp_data = EjectedObjectDataFileNameAndObjectID(
                     objects_data.file_name, objects_data.object_id)
                 if temp_data in self.objects_data:
                     event.ignore()
-                    return None
+                    return
 
             event.accept()
         else:
             event.ignore()
 
     def dropEvent(self, event: QDropEvent = None) -> None:
-        if event.mimeData().hasFormat("EjectedObject"):
-            data: TYPE_EJECTED_OBJECT = pickle.loads(
-                event.mimeData().data("EjectedObject"))
+        if event.mimeData().hasFormat(EjectedObject.__name__):
+            data: TypeEjectedObject = pickle.loads(
+                event.mimeData().data(EjectedObject.__name__))
             for objects_data in data:
                 temp_data = EjectedObjectDataFileNameAndObjectID(
                     objects_data.file_name, objects_data.object_id)
                 if temp_data in self.objects_data:
                     event.ignore()
-                    return None
+                    return
             event.accept()
             combining_objects_window = WindowToCombiningTwoObjects(
                 self, self.self_object_data, data)
             combining_objects_window.split_objects.connect(
-                self.split_objects_function)
+                self.splitObjectsFunction)
             combining_objects_window.exec()
             if combining_objects_window.combining:
-                self.combine_objects(data)
-                pass
-            return None
+                self.combineObjects(data)
+            return 
         else:
             event.ignore()
 
-    def combine_objects(self, other_object: TYPE_EJECTED_OBJECT):
+    def combineObjects(self, other_object: TypeEjectedObject):
         self.updateGridLayout.emit(
             other_object[0].position, other_object[0].sorted)
         self.deleteCombinedObject.emit(EjectedObjectDataFileNameAndObjectID(
             other_object[0].file_name, other_object[0].object_id))
         if self.self_object_data[0].sorted:
-            for object in other_object:
-                object.sorted = True
+            for ejected_object in other_object:
+                ejected_object.sorted = True
         self.self_object_data = self.self_object_data+other_object
         if self.self_object_data[-1].uuid != self.self_object_data[0].uuid:
             self.self_object_data[-1].uuid = self.self_object_data[0].uuid
@@ -137,14 +135,14 @@ class EjectedObject(QWidget, Ui_Form_Ejected_Object):
     def updateSelfObjectData(self):
         self.objects_data: EjectedObjectDataFileNameAndObjectID = [
             EjectedObjectDataFileNameAndObjectID(
-                object.file_name,
-                object.object_id
+                ejected_object.file_name,
+                ejected_object.object_id
             )
-            for object in self.self_object_data
+            for ejected_object in self.self_object_data
         ]
         self.object_images: List[BytesIO] = [
-            image for object in self.self_object_data for image in object.images]
-        self.generator_for_images = self.get_image()
+            image for ejected_object in self.self_object_data for image in ejected_object.images]
+        self.generator_for_images = self.getImage()
 
     def enterEvent(self, event: QEnterEvent = None) -> None:
         self.mouse_in_widget = True
@@ -158,14 +156,14 @@ class EjectedObject(QWidget, Ui_Form_Ejected_Object):
 
     def mouseDoubleClickEvent(self, event: QMouseEvent = None) -> None:
         dialog = OpenEjectedObject(self, self.self_object_data)
-        dialog.split_objects.connect(self.split_objects_function)
+        dialog.split_objects.connect(self.splitObjectsFunction)
         dialog.exec()
         pass
     
     def mousePressEvent(self, event: QMouseEvent = None) -> None:
-        self.set_next_image()
+        self.setNextImage()
 
-    def set_next_image(self):
+    def setNextImage(self):
         self.image_data = next(self.generator_for_images).getvalue()
         pixmap = QPixmap()
         pixmap.loadFromData(self.image_data)
@@ -182,20 +180,20 @@ class EjectedObject(QWidget, Ui_Form_Ejected_Object):
         self.label_image.setAlignment(Qt.AlignmentFlag.AlignCenter)
         pass
 
-    def get_image(self):
+    def getImage(self):
         while True:
             for image in self.object_images:
                 yield image
 
     def timerEvent(self):
-        self.set_next_image()
+        self.setNextImage()
         if self.mouse_in_widget:
             self.timer.start()
 
     def createUUID(self):
         return uuid4().hex
 
-    def split_objects_function(self, object_data: EjectedObjectData):
+    def splitObjectsFunction(self, object_data: EjectedObjectData):
         self.self_object_data.remove(object_data)
         object_data.changed = True
         object_data.uuid = ""
