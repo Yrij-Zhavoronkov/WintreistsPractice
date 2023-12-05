@@ -1,19 +1,20 @@
-import typing
+from functools import partial
+from math import ceil
+
 from PyQt6 import QtGui
 from PyQt6.QtWidgets import QDialog, QVBoxLayout, QGridLayout, QLabel, QPushButton, QSizePolicy, QGroupBox, QSpacerItem, QWidget, QApplication
-from PyQt6.QtCore import pyqtSignal
+from PyQt6.QtCore import pyqtSignal, Qt
 from PyQt6.QtGui import QPixmap
 
-from functools import partial
 from cv2 import imdecode
 from numpy import frombuffer, uint8
-from math import ceil
 
 from .QTForms.combining_two_objects_to_one import Ui_combining_objects
 from .classes import (
     EjectedObjectData,
     TypeEjectedObject,
 )
+from .grid_container import GridContainer
 
 class WindowToCombiningTwoObjects(QDialog, Ui_combining_objects):
     split_objects = pyqtSignal(EjectedObjectData)
@@ -85,24 +86,11 @@ class WindowToCombiningTwoObjects(QDialog, Ui_combining_objects):
                 2, 1
             )
             
-            QApplication.processEvents() # Отрисовываем уже готовое
             # Наполняем картинками
             image_widget = QGroupBox(widget, title="Изображения")
-            gridLayout_for_images = QGridLayout()
-            image_widget.setLayout(gridLayout_for_images)
-            max_width = 0
-            for image in object_data.images:
-                image_data = image.getvalue()
-                original_image_size = imdecode(
-                    frombuffer(image_data, uint8), -1).shape
-                scale_ratio = min((200) / original_image_size[0], (200) / original_image_size[1])
-                scaled_width = int(original_image_size[1] * scale_ratio)
-                if max_width < scaled_width:
-                    max_width = scaled_width
-            else:
-                images_in_row = ceil(widget_for_data.width() / (max_width + gridLayout_for_images.spacing()*2))
-                pass
-            
+            gridLayout_for_images = GridContainer(image_widget)
+            widget_layout.addWidget(image_widget)
+            labels = []
             for image in object_data.images:
                 pixmap = QPixmap()
                 image_data = image.getvalue()
@@ -118,23 +106,17 @@ class WindowToCombiningTwoObjects(QDialog, Ui_combining_objects):
                     scaled_width,
                     scaled_height
                 )
-                label = QLabel()
+                label = QLabel(image_widget)
                 label.setPixmap(pixmap)
-
-
-                gridLayout_for_images.addWidget(
-                    label, 
-                    gridLayout_for_images.count() // images_in_row, 
-                    gridLayout_for_images.count() % images_in_row,
-                )
-                pass
+                labels.append(label)
+            else:
+                gridLayout_for_images.addObject(labels)
             pushButton_for_hide_images = QPushButton('Скрыть изображения')
             pushButton_for_hide_images.clicked.connect(partial(toggle_hide_images, image_widget, pushButton_for_hide_images))
             gridLayout_for_data.addWidget(
                 pushButton_for_hide_images, 
                 2, 2,
             )
-            widget_layout.addWidget(image_widget)
         layout.addItem(
             QSpacerItem(
                 1, 1, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding

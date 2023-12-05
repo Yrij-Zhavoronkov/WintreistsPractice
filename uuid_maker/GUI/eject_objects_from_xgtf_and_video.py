@@ -1,11 +1,13 @@
-import cv2
-# from xml.etree import ElementTree as ET
-from lxml import etree as ET
 from pathlib import Path
 import io
 import os
 import typing
 from dataclasses import dataclass, field
+
+import cv2
+from lxml import etree as ET
+import numpy as np
+
 from .modules.classes import Position, ObjectData, EjectedObjectFrameInfo
 
 
@@ -102,9 +104,26 @@ def ejectObjects(path_to_xgtf_file: os.PathLike) -> typing.Generator[ObjectData,
             if ret:
                 object_frame_info = objects_frame_position[frame]
                 position: Position = object_frame_info.position
-                object_border = video_frame[position.y:position.y +
-                                            position.height, position.x:position.x+position.width]
-                _, buffer = cv2.imencode('.jpg', object_border)
+                x, y, width, height = position.x, position.y, position.width, position.height
+                true_x = x
+                true_y = y
+                if height > width:
+                    x -= (height - width) // 2
+                    x = max(x, 0)
+                    width = height
+                elif width > height:
+                    y -= (width - height) // 2
+                    y = max(y, 0)
+                    height = width
+                object_border = video_frame[position.y:position.y+position.height, position.x:position.x+position.width]
+                # Создаем маску для затемнения
+                square_object = video_frame[y:y+height, x:x+width]
+                mask = np.zeros_like(square_object)
+                transparency = 0.7
+                square_object_with_mask = cv2.addWeighted(square_object, 1 - transparency, mask, transparency, 0)
+                square_object_with_mask[position.y-y:position.y-y+position.height, position.x-x:position.x-x+position.width] = object_border
+                # Кодирование изображения в формат .jpg для сохранения в буфере
+                _, buffer = cv2.imencode('.jpg', square_object_with_mask)
                 io_buffer = io.BytesIO(buffer)
                 object_data.images.append(io_buffer)
         yield object_data

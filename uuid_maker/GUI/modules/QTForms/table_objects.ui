@@ -54,7 +54,7 @@
         <number>0</number>
        </property>
        <item>
-        <layout class="QGridLayout" name="gridLayout"/>
+        <widget class="QWidget" name="widget_for_objects" native="true"/>
        </item>
       </layout>
      </widget>

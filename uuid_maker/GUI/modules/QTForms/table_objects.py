@@ -25,9 +25,9 @@ class Ui_Form_table_objects(object):
         self.verticalLayout_4 = QtWidgets.QVBoxLayout(self.scrollAreaWidgetContents_sorted_objects)
         self.verticalLayout_4.setContentsMargins(0, 0, 0, 0)
         self.verticalLayout_4.setObjectName("verticalLayout_4")
-        self.gridLayout = QtWidgets.QGridLayout()
-        self.gridLayout.setObjectName("gridLayout")
-        self.verticalLayout_4.addLayout(self.gridLayout)
+        self.widget_for_objects = QtWidgets.QWidget(parent=self.scrollAreaWidgetContents_sorted_objects)
+        self.widget_for_objects.setObjectName("widget_for_objects")
+        self.verticalLayout_4.addWidget(self.widget_for_objects)
         self.scrollArea.setWidget(self.scrollAreaWidgetContents_sorted_objects)
         self.verticalLayout.addWidget(self.scrollArea)
 

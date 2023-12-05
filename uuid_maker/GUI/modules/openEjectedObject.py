@@ -1,7 +1,6 @@
 from PyQt6.QtWidgets import QDialog
 from PyQt6.QtCore import pyqtSignal
 
-
 from .QTForms.openEjectedObject import Ui_Form_open_ejected_object
 from .windowToCombiningTwoObjects import WindowToCombiningTwoObjects
 from .classes import (

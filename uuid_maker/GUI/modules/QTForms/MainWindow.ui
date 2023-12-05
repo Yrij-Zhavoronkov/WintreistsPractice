@@ -174,7 +174,7 @@
              </sizepolicy>
             </property>
             <property name="toolTip">
-             <string>Устанавливает два столбеца объектов</string>
+             <string>Устанавливает два столбца объектов</string>
             </property>
             <property name="text">
              <string/>
@@ -206,7 +206,7 @@
              </sizepolicy>
             </property>
             <property name="toolTip">
-             <string>Устанавливает три столбеца объектов</string>
+             <string>Устанавливает три столбца объектов</string>
             </property>
             <property name="text">
              <string/>
@@ -255,6 +255,22 @@
             </property>
             <property name="checkable">
              <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="pushButton_set_flex">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Maximum" vsizetype="Maximum">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="toolTip">
+             <string>Устанавливает динамическое количество столбцов в ряду</string>
+            </property>
+            <property name="text">
+             <string>Flex</string>
             </property>
            </widget>
           </item>

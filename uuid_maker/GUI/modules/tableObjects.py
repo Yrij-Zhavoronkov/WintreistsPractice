@@ -1,11 +1,12 @@
-from PyQt6.QtWidgets import QWidget, QMessageBox
-from PyQt6.QtCore import pyqtSignal
-from PyQt6.QtGui import QDragEnterEvent, QDropEvent
-
 import pickle
+
+from PyQt6.QtWidgets import QWidget, QMessageBox
+from PyQt6.QtCore import pyqtSignal, Qt
+from PyQt6.QtGui import QDragEnterEvent, QDropEvent
 
 from .QTForms.table_objects import Ui_Form_table_objects
 from .ejectedObject import EjectedObject
+from .grid_container import GridContainer
 from .classes import (
     TypeEjectedObject,
 )
@@ -18,6 +19,7 @@ class TableObjects(QWidget, Ui_Form_table_objects):
         self.setupUi(self)
 
         self.setAcceptDrops(True)
+        self.gridLayout = GridContainer(self.widget_for_objects, 3, alignment=Qt.AlignmentFlag.AlignTop)
 
         self.sorted = sorted
 

@@ -1,13 +1,14 @@
+from typing import Tuple, Union, List
+import pickle
+from uuid import uuid4
+from io import BytesIO
+
 from PyQt6.QtWidgets import QWidget
 from PyQt6.QtCore import pyqtSignal, QTimer, Qt, QMimeData, QByteArray, QEvent
 from PyQt6.QtGui import QMouseEvent, QDrag, QDragEnterEvent, QDropEvent, QEnterEvent, QPixmap
 
-from typing import Union, List
-import pickle
-from io import BytesIO
 from cv2 import imdecode
 from numpy import frombuffer, uint8
-from uuid import uuid4
 
 from .QTForms.EjectedObject import Ui_Form_Ejected_Object
 from .classes import (
@@ -31,7 +32,7 @@ class EjectedObject(QWidget, Ui_Form_Ejected_Object):
         self.setupUi(self)
 
         self.setAcceptDrops(True)
-        self.setFixedSize(300, 300)
+        self.setFixedSize(280, 280)
 
         if isinstance(ejected_object, ObjectData):
             ejected_object_data = EjectedObjectData(
@@ -169,8 +170,8 @@ class EjectedObject(QWidget, Ui_Form_Ejected_Object):
         pixmap.loadFromData(self.image_data)
         original_image_size = imdecode(
             frombuffer(self.image_data, uint8), -1).shape
-        width_ratio = (self.width()-38) / original_image_size[1]
-        height_ratio = (self.height()-38) / original_image_size[0]
+        width_ratio = (self.width()) / original_image_size[1]
+        height_ratio = (self.height()) / original_image_size[0]
         scale_ratio = min(width_ratio, height_ratio)
         pixmap = pixmap.scaled(
             int(original_image_size[1] * scale_ratio),
@@ -199,4 +200,8 @@ class EjectedObject(QWidget, Ui_Form_Ejected_Object):
         object_data.uuid = ""
         self.updateSelfObjectData()
         self.split_objects.emit(object_data)
+        pass
+
+    def updateInGrid(self, position: Tuple[int, int]):
+        self.position = position
         pass

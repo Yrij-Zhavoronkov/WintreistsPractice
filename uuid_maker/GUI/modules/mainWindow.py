@@ -1,14 +1,13 @@
-from PyQt6.QtWidgets import QMainWindow, QFileDialog, QPushButton, QMessageBox
-from PyQt6.QtCore import pyqtSignal, Qt
-from PyQt6.QtGui import QCloseEvent, QAction
-
 from threading import Lock
 from typing import List
 from pathlib import Path
 from functools import partial
 from typing import List, Dict, Union, Tuple
-
 import os
+
+from PyQt6.QtWidgets import QMainWindow, QFileDialog, QPushButton, QMessageBox
+from PyQt6.QtCore import pyqtSignal, Qt
+from PyQt6.QtGui import QCloseEvent, QAction
 
 from .QTForms.MainWindow import Ui_MainWindow
 from .classes import (
@@ -56,13 +55,14 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     def setup_properties(self):
         self.pushButtons_set = [
+            self.pushButton_set_flex,
             self.pushButton_set_1,
             self.pushButton_set_2,
             self.pushButton_set_3,
             self.pushButton_set_4,
         ]
-        self.gridLayout_sorted_objects.setSpacing(10)
-        self.gridLayout_not_sorted_objects.setSpacing(10)
+        self.gridLayout_sorted_objects.setSpacing(30)
+        self.gridLayout_not_sorted_objects.setSpacing(30)
         self.setStyleSheet(Path(__file__).parent.parent.joinpath("resources", "css", "Обычная тема.css").read_text())
         pass
 
@@ -78,7 +78,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             button.clicked.connect(
                 partial(
                     self.ejected_objects_in_row_valueChanged,
-                    index + 1,
+                    index,
                     button,
                 )
             )
@@ -86,15 +86,14 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         pass
 
     def ejected_objects_in_row_valueChanged(self, value:int, from_button: QPushButton):
-        self.EJECTED_OBJECTS_IN_ROW = value
         for button in self.pushButtons_set:
             if button != from_button:
                 button.setChecked(False)
                 button.setEnabled(True)
             if button == from_button:
                 button.setEnabled(False)
-        self.updateGridLayout(sorted=False, just_update=True)
-        self.updateGridLayout(sorted=True, just_update=True)
+        self.gridLayout_sorted_objects.setColumns(value)
+        self.gridLayout_not_sorted_objects.setColumns(value)
         pass
 
     def creating_widgets(self):
@@ -221,16 +220,15 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.sorted_lock.acquire()
         grid_count = self.gridLayout_sorted_objects.count()
         widget = EjectedObject(
-            object_data, self, (grid_count//self.EJECTED_OBJECTS_IN_ROW, grid_count % self.EJECTED_OBJECTS_IN_ROW), sorted=True)
+            object_data, 
+            self.sorted_table.widget_for_objects, 
+            (grid_count//self.EJECTED_OBJECTS_IN_ROW, grid_count % self.EJECTED_OBJECTS_IN_ROW), 
+            sorted=True
+        )
         widget.updateGridLayout.connect(self.updateGridLayout)
         widget.deleteCombinedObject.connect(self.deleteCombinedObject)
         widget.split_objects.connect(self.split_objects)
-        self.gridLayout_sorted_objects.addWidget(
-            widget, 
-            grid_count//self.EJECTED_OBJECTS_IN_ROW, 
-            grid_count % self.EJECTED_OBJECTS_IN_ROW,
-            Qt.AlignmentFlag.AlignTop,
-        )
+        self.gridLayout_sorted_objects.addObject(widget)
         for exist_widget in self.ejected_objects_widgets_list:
             if widget.self_object_data[0].uuid == exist_widget.self_object_data[0].uuid:
                 exist_widget.combineObjects(widget.self_object_data)
@@ -249,7 +247,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 self.not_sorted_lock.release()
                 return
         widget = EjectedObject(
-            object_data, self, (grid_count//self.EJECTED_OBJECTS_IN_ROW, grid_count % self.EJECTED_OBJECTS_IN_ROW), sorted=False)
+            object_data, 
+            self.not_sorted_table.widget_for_objects, 
+            (grid_count//self.EJECTED_OBJECTS_IN_ROW, grid_count % self.EJECTED_OBJECTS_IN_ROW), 
+            sorted=False
+        )
         for exist_widget in self.ejected_objects_widgets_list:
             if widget.self_object_data[0].uuid == exist_widget.self_object_data[0].uuid:
                 exist_widget.combineObjects(widget.self_object_data)
@@ -259,34 +261,23 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         widget.updateGridLayout.connect(self.updateGridLayout)
         widget.deleteCombinedObject.connect(self.deleteCombinedObject)
         widget.split_objects.connect(self.split_objects)
-        self.gridLayout_not_sorted_objects.addWidget(
-            widget, 
-            grid_count//self.EJECTED_OBJECTS_IN_ROW, 
-            grid_count % self.EJECTED_OBJECTS_IN_ROW,
-            Qt.AlignmentFlag.AlignTop,
-        )
+        self.gridLayout_not_sorted_objects.addObject(widget)
+        # self.gridLayout_not_sorted_objects.addWidget(
+        #     widget, 
+        #     grid_count//self.EJECTED_OBJECTS_IN_ROW, 
+        #     grid_count % self.EJECTED_OBJECTS_IN_ROW,
+        #     Qt.AlignmentFlag.AlignTop,
+        # )
         self.ejected_objects_widgets_list.append(widget)
         self.not_sorted_lock.release()
         pass
 
     def updateGridLayout(self, position: Tuple[int, int] = (0, 0), sorted: bool = False, just_update: bool = False):
         gridLayout = self.gridLayout_sorted_objects if sorted else self.gridLayout_not_sorted_objects
-        widget_index = position[0] * self.EJECTED_OBJECTS_IN_ROW + position[1]
+        widget_index = position[0] * gridLayout.getColumns + position[1]
         if not just_update:
-            widget = gridLayout.takeAt(widget_index).widget()
-            gridLayout.removeWidget(widget)
+            widget = gridLayout.removeObject(widget_index)
             widget.deleteLater()
-        for index in range(widget_index, gridLayout.count()):
-            widget: EjectedObject = gridLayout.takeAt(widget_index).widget()
-            gridLayout.removeWidget(widget)
-            widget.self_object_data[0].position = (
-                index//self.EJECTED_OBJECTS_IN_ROW, index % self.EJECTED_OBJECTS_IN_ROW)
-            gridLayout.addWidget(
-                widget, 
-                index//self.EJECTED_OBJECTS_IN_ROW, 
-                index % self.EJECTED_OBJECTS_IN_ROW,
-                Qt.AlignmentFlag.AlignTop)
-        pass
 
     def closeEvent(self, event: QCloseEvent):
         if self.thread_ejecting_object is not None:
